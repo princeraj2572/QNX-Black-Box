@@ -19,7 +19,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F11 CLI: `python3 -m blackbox analyze TRACE --config CONFIG [--json OUT]` prints the explanation; exit codes documented. Tests via subprocess.
 - [x] F12 Chaos scenarios: `blackbox/chaos/scenarios.py` declarative faults (kill_process, cpu_hog, delay_thread, memory_pressure) that produce lists of target shell commands. Pure and dry-run only. Tests.
 - [x] F13 Command runner: `blackbox/runner.py` with an SSH runner and a mock runner. No network in tests. Tests.
-- [ ] F14 Record command: `blackbox record --target HOST --seconds N` wraps tracelogger start/stop and copies the trace file; works against the mock runner. Tests.
+- [x] F14 Record command: `blackbox record --target HOST --seconds N` wraps tracelogger start/stop and copies the trace file; works against the mock runner. Tests.
 - [ ] F15 Chaos CLI: `blackbox chaos run SCENARIO [--dry-run]` ties F12 to F14 together. Tests.
 - [ ] F16 Dashboard: `blackbox report-html REPORT.json OUT.html` writes one self-contained HTML timeline (no external assets, vanilla JS). Tests check key elements.
 - [ ] F17 Docs: docs/codelab.md ("Debug a missed deadline on QNX in 30 minutes", with placeholders for real output) and a full README: install, usage, ASCII architecture diagram, and a QNX version / target / toolchain section.
