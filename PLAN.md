@@ -15,7 +15,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F07 Priority inversion: detect a high-priority thread blocked on a lower-priority one while a medium-priority thread runs. Fixture and tests.
 - [x] F08 Other causes: CPU starvation by a higher-priority thread, and long reply delay. Tests.
 - [x] F09 Explainer: `blackbox/explain.py` turns causes into plain-English text with timestamps and thread names. Golden-file tests.
-- [ ] F10 JSON report: `blackbox/report.py` (misses, causes, timeline). Schema in docs/report-format.md. Tests.
+- [x] F10 JSON report: `blackbox/report.py` (misses, causes, timeline). Schema in docs/report-format.md. Tests.
 - [ ] F11 CLI: `python3 -m blackbox analyze TRACE --config CONFIG [--json OUT]` prints the explanation; exit codes documented. Tests via subprocess.
 - [ ] F12 Chaos scenarios: `blackbox/chaos/scenarios.py` declarative faults (kill_process, cpu_hog, delay_thread, memory_pressure) that produce lists of target shell commands. Pure and dry-run only. Tests.
 - [ ] F13 Command runner: `blackbox/runner.py` with an SSH runner and a mock runner. No network in tests. Tests.
