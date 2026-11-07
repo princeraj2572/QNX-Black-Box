@@ -37,6 +37,13 @@ Render the JSON report as one self-contained HTML timeline:
 
     python3 -m blackbox report-html report.json report.html
 
+Live preview: serve the dashboard on `http://127.0.0.1:8000/`. It re-reads the
+trace and config on every request and refreshes itself every 2 seconds, so you
+can edit the trace and watch the page change:
+
+    python3 -m blackbox serve tests/fixtures/scenario_inversion.trace \
+        --config tests/fixtures/scenario_config.json [--port 8000]
+
 Record a trace on the target over SSH (copies the raw tracelogger file back):
 
     python3 -m blackbox record --target root@192.168.1.50 --seconds 10 --out trace.kev

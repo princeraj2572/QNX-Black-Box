@@ -13,6 +13,7 @@ from .parser import ParseError, parse_file
 from .record import DEFAULT_REMOTE_PATH, record
 from .report import build_report, report_json
 from .runner import RunnerError, SSHRunner
+from .serve import build_page, make_server
 
 EXIT_OK = 0
 EXIT_MISSES = 1
@@ -49,6 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
     h = sub.add_parser("report-html", help="render a JSON report as a self-contained HTML page")
     h.add_argument("report", help="report JSON written by `analyze --json`")
     h.add_argument("out", help="HTML file to write")
+    s = sub.add_parser("serve", help="live preview: serve the dashboard for a trace on localhost")
+    s.add_argument("trace", help="trace file in the internal format")
+    s.add_argument("--config", required=True, help="thread config JSON")
+    s.add_argument("--port", type=int, default=8000, help="port on 127.0.0.1 (default 8000)")
     c = sub.add_parser("chaos", help="inject faults on the target")
     csub = c.add_subparsers(dest="chaos_command", required=True)
     cr = csub.add_parser("run", help="run a fault scenario while recording a trace")
@@ -90,6 +95,23 @@ def cmd_record(args, runner_factory) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
     print(f"saved trace to {args.out}")
+    return EXIT_OK
+
+
+def cmd_serve(args) -> int:
+    try:
+        build_page(args.trace, args.config)  # fail fast on bad input
+        server = make_server(args.trace, args.config, args.port)
+    except (OSError, ParseError, ConfigError, OverflowError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"serving http://127.0.0.1:{server.server_port}/ (Ctrl+C to stop)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
     return EXIT_OK
 
 
@@ -142,4 +164,6 @@ def main(argv=None, runner_factory=SSHRunner) -> int:
         return cmd_chaos_run(args, runner_factory)
     if args.command == "report-html":
         return cmd_report_html(args)
+    if args.command == "serve":
+        return cmd_serve(args)
     return cmd_analyze(args)
