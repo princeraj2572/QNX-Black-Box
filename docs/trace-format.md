@@ -37,6 +37,18 @@ One event per line:
 
 `peer` is a thread id (`tid`), not a name.
 
+## Job markers
+
+The analyzer finds jobs through two reserved `THREAD_STATE` values:
+
+- `state=RELEASED`: a job of the thread is released (periodic wake-up).
+- `state=DONE`: the thread finished the current job.
+
+A job is the interval from `RELEASED` to the next `DONE` of the same thread.
+All other `state` values are free-form.
+
+TODO(human): decide how real tracelogger events yield RELEASED and DONE.
+
 ## Example
 
     # ts_ns EVENT key=value ...

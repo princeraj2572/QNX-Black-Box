@@ -10,7 +10,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F02 Event model: `blackbox/events.py` dataclasses for RUN, THREAD_STATE, MSG_SEND, MSG_RECEIVE, MSG_REPLY (ts_ns, tid, name, prio, peer where relevant). Document the internal text format `<ts_ns> <EVENT> key=value ...` in docs/trace-format.md. Tests.
 - [x] F03 Parser: `blackbox/parser.py` reads the internal format into events. Tolerates blank lines and `#` comments; errors include line numbers. Fixtures in tests/fixtures/. Tests.
 - [x] F04 Config: `blackbox/config.py` loads a JSON file listing threads with period_ms, deadline_ms and priority. Validation and tests.
-- [ ] F05 Deadline-miss detector: `blackbox/deadlines.py` finds jobs (release to completion) that exceed their deadline. Fixture with one miss and one hit. Tests.
+- [x] F05 Deadline-miss detector: `blackbox/deadlines.py` finds jobs (release to completion) that exceed their deadline. Fixture with one miss and one hit. Tests.
 - [ ] F06 Blocking chains: `blackbox/blocking.py` builds who-was-blocked-on-whom from SEND/RECEIVE/REPLY intervals. Tests.
 - [ ] F07 Priority inversion: detect a high-priority thread blocked on a lower-priority one while a medium-priority thread runs. Fixture and tests.
 - [ ] F08 Other causes: CPU starvation by a higher-priority thread, and long reply delay. Tests.

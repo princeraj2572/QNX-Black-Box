@@ -1,0 +1,7 @@
+# controller has an 8 ms deadline. Job 1 finishes in 5 ms, job 2 takes 12 ms.
+0 THREAD_STATE tid=4 name=controller prio=20 state=RELEASED
+1000000 RUN tid=4 name=controller prio=20
+5000000 THREAD_STATE tid=4 name=controller prio=20 state=DONE
+10000000 THREAD_STATE tid=4 name=controller prio=20 state=RELEASED
+11000000 RUN tid=4 name=controller prio=20
+22000000 THREAD_STATE tid=4 name=controller prio=20 state=DONE
