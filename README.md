@@ -3,13 +3,87 @@
 Host-side tooling that records a QNX 8.0 system trace, injects faults, and
 explains in plain English why a real-time deadline was missed.
 
-Status: scaffold. See PLAN.md for the build order.
+You give it a trace and a small config listing each thread's period, deadline
+and priority. It finds every job that missed its deadline and says why:
+priority inversion, CPU starvation by a higher-priority thread, or a slow
+reply to a message.
 
-## Development
+```
+high missed its 5.0 ms deadline: the job released at 0.000 ms finished at 10.000 ms, ...
+  - Priority inversion: high (priority 20) was blocked on low (priority 5) from 2.000 ms,
+    and med (priority 10) ran for 5.000 ms in the meantime, so low could not finish and reply.
+```
 
-    python3 -m unittest discover -s tests
+## Install
 
-Python 3 standard library only.
+Python 3.8 or newer, standard library only. No packages to install.
+
+    git clone https://github.com/princeraj2572/QNX-Black-Box.git
+    cd QNX-Black-Box
+    python3 -m unittest discover -s tests      # optional: run the tests
+
+Run everything as `python3 -m blackbox <command>` from the repo root.
+
+## Usage
+
+Explain the misses in a trace (internal text format, see `docs/trace-format.md`):
+
+    python3 -m blackbox analyze tests/fixtures/scenario_inversion.trace \
+        --config tests/fixtures/scenario_config.json --json report.json
+
+Exit codes: `0` no misses, `1` at least one miss, `2` bad input or usage.
+
+Render the JSON report as one self-contained HTML timeline:
+
+    python3 -m blackbox report-html report.json report.html
+
+Record a trace on the target over SSH (copies the raw tracelogger file back):
+
+    python3 -m blackbox record --target root@192.168.1.50 --seconds 10 --out trace.kev
+
+Inject faults while recording. `--dry-run` only prints the commands that would
+run on the target and connects to nothing:
+
+    python3 -m blackbox chaos run tests/fixtures/scenario_chaos.json --dry-run
+    python3 -m blackbox chaos run scenario.json --target root@192.168.1.50 --seconds 10
+
+Fault types: `kill_process`, `cpu_hog`, `delay_thread`, `memory_pressure`
+(parameters in `blackbox/chaos/scenarios.py`).
+
+The report format is in `docs/report-format.md`. A guided walkthrough is in
+`docs/codelab.md`.
+
+## Architecture
+
+```
+ QNX target                          host (this repo)
++--------------------+   ssh/scp   +--------------------------------------------+
+| services           |<------------| chaos  (scenarios -> shell commands)       |
+| tracelogger        |------------>| record (start/stop tracelogger, copy file) |
++--------------------+  raw trace  +--------------------------------------------+
+                                          | adapter (TODO: real trace -> text)
+                                          v
+              trace.txt --> parser --> events --> detectors --> explainer --> text
+              config.json -----------------------^   |  deadlines, blocking,
+                                                     |  inversion, starvation,
+                                                     v  slow replies
+                                                  report.json --> report-html --> report.html
+```
+
+## QNX version, target and toolchain
+
+| Item      | Value |
+|-----------|-------|
+| QNX       | QNX Software Development Platform (SDP) 8.0 |
+| Target    | QEMU virtual machine or Raspberry Pi 5 |
+| Toolchain | `qcc` from SDP 8.0 builds the C demo services in `target/` |
+| Host      | any OS with Python 3 and an `ssh`/`scp` client |
+
+Status: the analyzer, chaos and record commands are written and tested against
+the internal trace format and a mock runner. They have not yet been run on a
+real QNX 8.0 system. Commands sent to the target and the mapping from real
+tracelogger output to the internal format are marked `TODO(human)` in the
+code and docs until someone verifies them on a real target.
 
 ## License
 
