@@ -13,7 +13,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F05 Deadline-miss detector: `blackbox/deadlines.py` finds jobs (release to completion) that exceed their deadline. Fixture with one miss and one hit. Tests.
 - [x] F06 Blocking chains: `blackbox/blocking.py` builds who-was-blocked-on-whom from SEND/RECEIVE/REPLY intervals. Tests.
 - [x] F07 Priority inversion: detect a high-priority thread blocked on a lower-priority one while a medium-priority thread runs. Fixture and tests.
-- [ ] F08 Other causes: CPU starvation by a higher-priority thread, and long reply delay. Tests.
+- [x] F08 Other causes: CPU starvation by a higher-priority thread, and long reply delay. Tests.
 - [ ] F09 Explainer: `blackbox/explain.py` turns causes into plain-English text with timestamps and thread names. Golden-file tests.
 - [ ] F10 JSON report: `blackbox/report.py` (misses, causes, timeline). Schema in docs/report-format.md. Tests.
 - [ ] F11 CLI: `python3 -m blackbox analyze TRACE --config CONFIG [--json OUT]` prints the explanation; exit codes documented. Tests via subprocess.
