@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Strips tool/assistant attribution trailers and rejects any message that still mentions them.
+f="$1"
+sed -i -E '/^[[:space:]]*Co-Authored-By:/Id; /Generated with/Id; /claude\.ai/Id; /noreply@anthropic\.com/Id' "$f"
+if grep -qiE 'claude|anthropic' "$f"; then
+  echo "commit-msg: message must not mention Claude or Anthropic" >&2
+  exit 1
+fi

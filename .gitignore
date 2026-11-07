@@ -1,0 +1,4 @@
+.loop/
+__pycache__/
+*.pyc
+*.kev
