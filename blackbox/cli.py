@@ -1,11 +1,13 @@
 """Command line interface: python3 -m blackbox <command>."""
 
 import argparse
+import json
 import sys
 
 from .analysis import analyze
 from .chaos.scenarios import ScenarioError, load_scenario
 from .config import ConfigError, load_config
+from .dashboard import render_html
 from .explain import explain
 from .parser import ParseError, parse_file
 from .record import DEFAULT_REMOTE_PATH, record
@@ -44,6 +46,9 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", default="trace.kev", help="local file for the raw trace")
     r.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
                    help="trace file path on the target")
+    h = sub.add_parser("report-html", help="render a JSON report as a self-contained HTML page")
+    h.add_argument("report", help="report JSON written by `analyze --json`")
+    h.add_argument("out", help="HTML file to write")
     c = sub.add_parser("chaos", help="inject faults on the target")
     csub = c.add_subparsers(dest="chaos_command", required=True)
     cr = csub.add_parser("run", help="run a fault scenario while recording a trace")
@@ -88,6 +93,19 @@ def cmd_record(args, runner_factory) -> int:
     return EXIT_OK
 
 
+def cmd_report_html(args) -> int:
+    try:
+        with open(args.report, "r", encoding="utf-8") as f:
+            page = render_html(json.load(f))
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(page)
+    except (OSError, ValueError) as exc:  # includes JSON and report-format errors
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"wrote {args.out}")
+    return EXIT_OK
+
+
 def cmd_chaos_run(args, runner_factory) -> int:
     try:
         scenario = load_scenario(args.scenario)
@@ -122,4 +140,6 @@ def main(argv=None, runner_factory=SSHRunner) -> int:
         return cmd_record(args, runner_factory)
     if args.command == "chaos":
         return cmd_chaos_run(args, runner_factory)
+    if args.command == "report-html":
+        return cmd_report_html(args)
     return cmd_analyze(args)
