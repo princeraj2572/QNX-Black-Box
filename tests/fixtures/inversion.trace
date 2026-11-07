@@ -1,0 +1,9 @@
+# high(20) sends to low(5) at 100; low is preempted by med(10) from 200 to 700.
+50 RUN tid=1 name=high prio=20
+100 MSG_SEND tid=1 name=high prio=20 peer=3
+110 MSG_RECEIVE tid=3 name=low prio=5 peer=1
+120 RUN tid=3 name=low prio=5
+200 RUN tid=2 name=med prio=10
+700 RUN tid=3 name=low prio=5
+900 MSG_REPLY tid=3 name=low prio=5 peer=1
+950 RUN tid=1 name=high prio=20
