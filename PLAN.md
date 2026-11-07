@@ -23,7 +23,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F15 Chaos CLI: `blackbox chaos run SCENARIO [--dry-run]` ties F12 to F14 together. Tests.
 - [x] F16 Dashboard: `blackbox report-html REPORT.json OUT.html` writes one self-contained HTML timeline (no external assets, vanilla JS). Tests check key elements.
 - [x] F17 Docs: docs/codelab.md ("Debug a missed deadline on QNX in 30 minutes", with placeholders for real output) and a full README: install, usage, ASCII architecture diagram, and a QNX version / target / toolchain section.
-- [ ] F17b Judge guide: docs/qnx-usage.md maps each QNX feature the project relies on (tracelogger, instrumented kernel, message passing, pidin, slog2) to the files and functions that use it, so reviewers can find it quickly. Mark anything unverified with TODO(human).
+- [x] F17b Judge guide: docs/qnx-usage.md maps each QNX feature the project relies on (tracelogger, instrumented kernel, message passing, pidin, slog2) to the files and functions that use it, so reviewers can find it quickly. Mark anything unverified with TODO(human).
 - [ ] F18 [HUMAN] Install QNX SDP 8.0, boot QEMU, confirm the instrumented kernel and `tracelogger` work.
 - [ ] F19 [HUMAN] Capture a real trace, export it to text, save it under tests/fixtures/real/.
 - [ ] F20 [HUMAN] Add `blackbox/adapters/tracelogger.py` mapping the real exported events to the internal format (or remove the HUMAN tag once the real fixture exists so the loop can do it).
