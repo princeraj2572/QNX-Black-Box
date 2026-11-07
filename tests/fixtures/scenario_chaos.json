@@ -1,0 +1,7 @@
+{
+  "name": "demo",
+  "faults": [
+    {"type": "kill_process", "process": "sensor"},
+    {"type": "delay_thread", "process": "controller", "seconds": 2}
+  ]
+}

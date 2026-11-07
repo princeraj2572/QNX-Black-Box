@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from .analysis import analyze
+from .chaos.scenarios import ScenarioError, load_scenario
 from .config import ConfigError, load_config
 from .explain import explain
 from .parser import ParseError, parse_file
@@ -43,6 +44,17 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", default="trace.kev", help="local file for the raw trace")
     r.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
                    help="trace file path on the target")
+    c = sub.add_parser("chaos", help="inject faults on the target")
+    csub = c.add_subparsers(dest="chaos_command", required=True)
+    cr = csub.add_parser("run", help="run a fault scenario while recording a trace")
+    cr.add_argument("scenario", help="scenario JSON file")
+    cr.add_argument("--dry-run", action="store_true",
+                    help="print the target commands and exit; connects to nothing")
+    cr.add_argument("--target", help="ssh host (required unless --dry-run)")
+    cr.add_argument("--seconds", type=int, default=10, help="recording length")
+    cr.add_argument("--out", default="trace.kev", help="local file for the raw trace")
+    cr.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
+                    help="trace file path on the target")
     return p
 
 
@@ -76,6 +88,31 @@ def cmd_record(args, runner_factory) -> int:
     return EXIT_OK
 
 
+def cmd_chaos_run(args, runner_factory) -> int:
+    try:
+        scenario = load_scenario(args.scenario)
+    except (OSError, ScenarioError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    commands = scenario.commands()
+    if args.dry_run:
+        print(f"# scenario {scenario.name}: {len(commands)} command(s), nothing executed")
+        for cmd in commands:
+            print(cmd)
+        return EXIT_OK
+    if not args.target:
+        print("error: --target is required unless --dry-run is given", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        record(runner_factory(args.target), args.seconds, args.out,
+               args.remote_path, inject=commands)
+    except (OSError, ValueError, RunnerError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"ran scenario {scenario.name}; saved trace to {args.out}")
+    return EXIT_OK
+
+
 def main(argv=None, runner_factory=SSHRunner) -> int:
     try:
         args = build_parser().parse_args(argv)
@@ -83,4 +120,6 @@ def main(argv=None, runner_factory=SSHRunner) -> int:
         return exc.code if isinstance(exc.code, int) else EXIT_ERROR
     if args.command == "record":
         return cmd_record(args, runner_factory)
+    if args.command == "chaos":
+        return cmd_chaos_run(args, runner_factory)
     return cmd_analyze(args)
