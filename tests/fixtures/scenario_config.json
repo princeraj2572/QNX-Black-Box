@@ -1,0 +1,7 @@
+{
+  "threads": [
+    {"name": "high", "period_ms": 20, "deadline_ms": 5, "priority": 20},
+    {"name": "med", "period_ms": 50, "deadline_ms": 50, "priority": 10},
+    {"name": "low", "period_ms": 50, "deadline_ms": 50, "priority": 5}
+  ]
+}

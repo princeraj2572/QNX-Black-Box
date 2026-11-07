@@ -1,0 +1,11 @@
+# high (prio 20, 5 ms deadline) asks low (prio 5) for data; med (prio 10) preempts low.
+0 THREAD_STATE tid=1 name=high prio=20 state=RELEASED
+1000000 RUN tid=1 name=high prio=20
+2000000 MSG_SEND tid=1 name=high prio=20 peer=3
+2100000 MSG_RECEIVE tid=3 name=low prio=5 peer=1
+2200000 RUN tid=3 name=low prio=5
+3000000 RUN tid=2 name=med prio=10
+8000000 RUN tid=3 name=low prio=5
+9000000 MSG_REPLY tid=3 name=low prio=5 peer=1
+9100000 RUN tid=1 name=high prio=20
+10000000 THREAD_STATE tid=1 name=high prio=20 state=DONE

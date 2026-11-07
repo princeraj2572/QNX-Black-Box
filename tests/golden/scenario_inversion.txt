@@ -1,0 +1,5 @@
+Found 1 deadline miss.
+
+high missed its 5.0 ms deadline: the job released at 0.000 ms finished at 10.000 ms, a response time of 10.000 ms, 5.000 ms late.
+  - Priority inversion: high (priority 20) was blocked on low (priority 5) from 2.000 ms, and med (priority 10) ran for 5.000 ms in the meantime, so low could not finish and reply.
+  - Slow reply: high sent a message to low at 2.000 ms and waited 7.000 ms for the reply.
