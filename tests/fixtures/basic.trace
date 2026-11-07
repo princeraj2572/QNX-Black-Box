@@ -1,0 +1,7 @@
+# ts_ns EVENT key=value ...
+1000 RUN tid=4 name=controller prio=20
+
+1500 MSG_SEND tid=4 name=controller prio=20 peer=7
+1600 MSG_RECEIVE tid=7 name=sensor prio=10 peer=4
+2400 MSG_REPLY tid=7 name=sensor prio=10 peer=4
+2500 THREAD_STATE tid=4 name=controller prio=20 state=READY
