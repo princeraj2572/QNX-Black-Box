@@ -31,6 +31,12 @@ class CausesTest(unittest.TestCase):
         (s,) = find_starvation(events, misses, CONFIG)
         self.assertEqual((s.hog_name, s.hog_prio, s.run_ns), ("logger", 30, 8 * MS))
 
+    def test_brief_hog_is_not_starvation(self):
+        events = parse_text(STARVED)
+        misses = find_misses(events, CONFIG)
+        deadline_ns = CONFIG["ctl"].deadline_ms * MS
+        self.assertEqual(find_starvation(events, misses, CONFIG, 8 * MS / deadline_ns + 0.01), [])
+
     def test_lower_priority_runner_is_not_starvation(self):
         events = parse_text(STARVED.replace("prio=30", "prio=3"))
         misses = find_misses(events, CONFIG)

@@ -31,9 +31,13 @@ def _window_end(job: Job, trace_end: int) -> int:
 
 
 def find_starvation(
-    events: List[Event], misses: List[Job], config: Dict[str, ThreadConfig]
+    events: List[Event],
+    misses: List[Job],
+    config: Dict[str, ThreadConfig],
+    min_fraction: float = 0.05,
 ) -> List[Starvation]:
-    """Higher-priority threads that ran while a missed job was in flight.
+    """Higher-priority threads that ran >= min_fraction of the deadline while a
+    missed job was in flight (real traces are full of brief kernel threads).
 
     shortcut: counts all their run time in the window, even while the victim
     was blocked; refine if reports blame hogs for time the victim couldn't run.
@@ -43,6 +47,7 @@ def find_starvation(
     found = []
     for job in misses:
         prio, end = config[job.name].priority, _window_end(job, trace_end)
+        limit = config[job.name].deadline_ms * 1_000_000 * min_fraction
         totals: Dict[int, list] = {}
         for run, start, stop in intervals:
             lo, hi = max(start, job.release_ns), min(stop, end)
@@ -50,7 +55,8 @@ def find_starvation(
                 entry = totals.setdefault(run.tid, [run, 0])
                 entry[1] += hi - lo
         for run, total in totals.values():
-            found.append(Starvation(job, run.tid, run.name, run.prio, total))
+            if total >= limit:
+                found.append(Starvation(job, run.tid, run.name, run.prio, total))
     return sorted(found, key=lambda s: (s.job.release_ns, -s.run_ns))
 
 

@@ -27,6 +27,10 @@ class RealDemoTest(unittest.TestCase):
         slow = {d.job for d in self.result.reply_delays if d.block.on_name == "server"}
         self.assertEqual(slow, set(self.result.misses))
 
+    def test_brief_kernel_threads_are_not_blamed(self):
+        # 5% of the 20 ms deadline; interrupt threads run for microseconds
+        self.assertTrue(all(s.run_ns >= 1_000_000 for s in self.result.starvation))
+
     def test_server_inherits_the_client_priority(self):
         # QNX runs the server at the sender's priority once it receives.
         prios = {e.prio for e in self.events if isinstance(e, MsgReceive) and e.name == "server"}
