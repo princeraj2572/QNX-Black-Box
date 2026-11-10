@@ -1,6 +1,6 @@
-"""End to end on a real capture: target/inversion_demo run for 5 s on QNX SDP
-8.0 (x86_64 QEMU), recorded with tracelogger -w, decoded with traceprinter and
-converted by blackbox.adapters.tracelogger."""
+"""End to end on real captures: target/inversion_demo run for 5 s on QNX SDP
+8.0 (x86_64 QEMU), without and with --fixed, recorded with tracelogger -w,
+decoded with traceprinter and converted by blackbox.adapters.tracelogger."""
 
 import os
 import unittest
@@ -16,8 +16,10 @@ REAL = os.path.join(os.path.dirname(__file__), "fixtures", "real")
 class RealDemoTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        config = load_config(os.path.join(REAL, "inversion_demo.json"))
         cls.events = parse_file(os.path.join(REAL, "inversion_demo.trace"))
-        cls.result = analyze(cls.events, load_config(os.path.join(REAL, "inversion_demo.json")))
+        cls.result = analyze(cls.events, config)
+        cls.fixed = analyze(parse_file(os.path.join(REAL, "inversion_demo_fixed.trace")), config)
 
     def test_controller_misses_its_deadline(self):
         self.assertGreater(len(self.result.misses), 0)
@@ -26,6 +28,10 @@ class RealDemoTest(unittest.TestCase):
     def test_misses_are_blamed_on_the_server_reply(self):
         slow = {d.job for d in self.result.reply_delays if d.block.on_name == "server"}
         self.assertEqual(slow, set(self.result.misses))
+
+    def test_priority_inheritance_fixes_it(self):
+        self.assertEqual(len(self.result.misses), 10)  # the demo printed 10 too
+        self.assertEqual(self.fixed.misses, [])
 
     def test_brief_kernel_threads_are_not_blamed(self):
         # 5% of the 20 ms deadline; interrupt threads run for microseconds

@@ -42,7 +42,8 @@ fixtures and a mock runner.
   with `target/inversion_demo.c`): the server runs at the sender's priority
   (20) from the moment it receives. The demo still misses its deadline because
   the server then waits on a mutex without inheritance held by `low` (5) while
-  `med` (10) runs. The analyzer reports this as a slow reply from the server;
+  `med` (10) runs; with `--fixed` (PTHREAD_PRIO_INHERIT) the misses go from
+  10 to 0. The analyzer reports this as a slow reply from the server;
   it does not yet name the mutex holder, because uncontended mutex locks never
   enter the kernel and so leave no owner in the trace. TODO(human): decide
   whether to model mutex waits.

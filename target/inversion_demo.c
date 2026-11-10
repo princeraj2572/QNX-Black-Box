@@ -1,19 +1,24 @@
 /*
- * Priority-inversion demo for QNX Black Box. DRAFT: never compiled or run.
+ * Priority-inversion demo for QNX Black Box.
+ *
+ *   inversion_demo [seconds] [--fixed]
  *
  * Threads (all SCHED_FIFO, one process, one channel):
  *   controller  prio 20  every 50 ms sends a message to the server; wants the
  *                        reply within 20 ms
  *   server      prio 5   receives the message, takes the shared mutex, replies
- *   low         prio 5   holds the shared mutex for 30 ms at a time
- *   med         prio 10  busy-loops for 100 ms bursts after a 2 s delay
+ *   low         prio 5   holds the shared mutex 10 ms on, 10 ms off; after
+ *                        2 s, every 10th time it wakes med while holding it
+ *   med         prio 10  busy-loops for 60 ms each time it is woken
  *
- * The mutex deliberately has no priority inheritance, so when med preempts
- * low while low holds the mutex, the server (and so the controller) waits.
+ * All threads share one CPU. Without --fixed the mutex has no priority
+ * inheritance: med preempts low while low holds the mutex, the server (and
+ * so the controller) waits ~60 ms, and the 20 ms deadline is missed. With
+ * --fixed (PTHREAD_PRIO_INHERIT) low runs at the waiting server's priority,
+ * med cannot preempt it, and the deadline holds.
  *
  * Checked on QNX 8.0 (x86_64 QEMU): the server runs at the controller's
- * priority (20) after MsgReceive, but still waits on the mutex while med
- * preempts low, so the controller misses its 20 ms deadline by up to ~10 ms.
+ * priority (20) after MsgReceive, yet still waits on the mutex.
  * Thread names (pthread_setname_np) show up in the trace. The controller logs
  * "blackbox RELEASED"/"blackbox DONE" user events, which the tracelogger
  * adapter turns into job markers.
@@ -21,6 +26,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,11 +37,13 @@
 
 #define PERIOD_MS 50
 #define DEADLINE_MS 20
+#define HOLD_MS 10 /* short enough for the deadline unless med preempts the holder */
 #define TRACE_CODE 100 /* any user event code; the adapter matches the text */
 
 static pthread_mutex_t shared;
 static int chid;
 static volatile int running = 1;
+static sem_t med_go; /* low wakes med while holding the mutex */
 
 static void set_self(const char *name, int prio)
 {
@@ -45,6 +53,10 @@ static void set_self(const char *name, int prio)
     if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp) != 0)
         fprintf(stderr, "%s: cannot set priority %d (run as root?)\n", name, prio);
     pthread_setname_np(pthread_self(), name);
+    /* One CPU for every thread: on SMP, med would run beside low instead of
+     * preempting it, and there would be no inversion to show. */
+    if (ThreadCtl(_NTO_TCTL_RUNMASK, (void *)1) == -1)
+        perror("ThreadCtl runmask");
 }
 
 static long elapsed_ms(const struct timespec *a, const struct timespec *b)
@@ -64,12 +76,16 @@ static void burn_ms(long ms)
 static void *low_thread(void *arg)
 {
     (void)arg;
+    int n = 0;
     set_self("low", 5);
     while (running) {
         pthread_mutex_lock(&shared);
-        burn_ms(30);
+        /* After a quiet 2 s, every 10th critical section gets interrupted. */
+        if (++n > 2000 / (2 * HOLD_MS) && n % 10 == 0)
+            sem_post(&med_go);
+        burn_ms(HOLD_MS);
         pthread_mutex_unlock(&shared);
-        usleep(20 * 1000);
+        usleep(HOLD_MS * 1000);
     }
     return NULL;
 }
@@ -78,10 +94,9 @@ static void *med_thread(void *arg)
 {
     (void)arg;
     set_self("med", 10);
-    sleep(2);
     while (running) {
-        burn_ms(100);
-        usleep(100 * 1000);
+        sem_wait(&med_go);
+        burn_ms(60);
     }
     return NULL;
 }
@@ -137,13 +152,17 @@ static void *controller_thread(void *arg)
 int main(int argc, char **argv)
 {
     int seconds = argc > 1 ? atoi(argv[1]) : 10;
+    /* --fixed: priority inheritance on the mutex, so low runs at the waiting
+     * server's priority and med can no longer preempt it. */
+    int fixed = argc > 2 && strcmp(argv[2], "--fixed") == 0;
     pthread_mutexattr_t attr;
     pthread_t t[4];
 
     pthread_mutexattr_init(&attr);
-    pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_NONE); /* no inheritance */
+    pthread_mutexattr_setprotocol(&attr, fixed ? PTHREAD_PRIO_INHERIT : PTHREAD_PRIO_NONE);
     pthread_mutex_init(&shared, &attr);
 
+    sem_init(&med_go, 0, 0);
     chid = ChannelCreate(0);
     if (chid == -1) {
         perror("ChannelCreate");
