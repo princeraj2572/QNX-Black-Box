@@ -38,6 +38,11 @@ fixtures and a mock runner.
   tracing on QEMU and on Raspberry Pi 5 (PLAN.md F18).
 - TODO(human): slay -s, on -p and the shell variable SECONDS behave as the
   chaos commands assume.
-- TODO(human): how priority inheritance changes message-passing priorities
-  in real traces, since the detectors compare the priorities recorded in each
-  event (PLAN.md F21).
+- Priority inheritance in message passing (checked on SDP 8.0, x86_64 QEMU,
+  with `target/inversion_demo.c`): the server runs at the sender's priority
+  (20) from the moment it receives. The demo still misses its deadline because
+  the server then waits on a mutex without inheritance held by `low` (5) while
+  `med` (10) runs. The analyzer reports this as a slow reply from the server;
+  it does not yet name the mutex holder, because uncontended mutex locks never
+  enter the kernel and so leave no owner in the trace. TODO(human): decide
+  whether to model mutex waits.

@@ -1,0 +1,5 @@
+{
+  "threads": [
+    {"name": "controller", "period_ms": 50, "deadline_ms": 20, "priority": 20}
+  ]
+}

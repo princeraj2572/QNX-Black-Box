@@ -28,7 +28,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F18 [HUMAN] Install QNX SDP 8.0, boot QEMU, confirm the instrumented kernel and `tracelogger` work.
 - [x] F19 [HUMAN] Capture a real trace, export it to text, save it under tests/fixtures/real/.
 - [x] F20 Add `blackbox/adapters/tracelogger.py` mapping the real exported events to the internal format (or remove the HUMAN tag once the real fixture exists so the loop can do it).
-- [ ] F21 [HUMAN] Write and build the C demo services under target/ with qcc: a sensor, a controller and a deliberate priority inversion. Verify how QNX priority inheritance affects message passing; use a mutex without priority inheritance if needed.
+- [x] F21 [HUMAN] Write and build the C demo services under target/ with qcc: a sensor, a controller and a deliberate priority inversion. Verify how QNX priority inheritance affects message passing; use a mutex without priority inheritance if needed.
 - [ ] F22 [HUMAN] Record the demo video (under 3 minutes) and put real measured numbers into the README and codelab.
 - [ ] F23 [HUMAN] Check whether the High Availability Manager (watchdog) is available in SDP 8.0. If yes, add a demo where it restarts a killed service and the tool measures recovery time; record the result in docs/qnx-usage.md.
 - [ ] F24 [HUMAN] Devpost submission checklist: public repo with a detectable open-source license, build/run instructions naming QNX version, target (QEMU or Raspberry Pi 5) and toolchain, written description, public YouTube demo under 3 minutes, selected category (Developer Tooling and Host Tools), codelab URL for the tutorial prize, and an explanation of how the project uses QNX. Check the Official Rules for any AI-tool disclosure requirement.

@@ -1,7 +1,7 @@
 # Target demo services
 
-DRAFT: this code has never been compiled or run. Everything below is for a
-person with a QNX SDP 8.0 install to verify (PLAN.md F21).
+Built and run on QNX SDP 8.0 (x86_64 QEMU). A 5 s run misses the 20 ms
+deadline 16 times; the capture is `tests/fixtures/real/inversion_demo.trace`.
 
 `inversion_demo.c` runs four threads in one process: a controller (prio 20),
 a server (prio 5), a low-priority mutex holder (prio 5) and a medium-priority
@@ -29,10 +29,10 @@ Record a trace while it runs:
 
     python3 -m blackbox record --target root@<ip> --seconds 10
 
-## Things to check
+## What a real run shows
 
-- Does a miss appear after the 2 s delay when `med` starts? If not, see the
-  TODO(human) notes at the top of the source.
-- Does the controller's thread name show up in the trace?
-- Thread config for the analyzer: controller `period_ms` 50, `deadline_ms` 20,
-  `priority` 20.
+- Misses start after the 2 s delay, once `med` starts competing with `low`.
+- Thread names (`controller`, `server`, `low`, `med`) appear in the trace.
+- Analyze it with `tests/fixtures/real/inversion_demo.json` (controller
+  `period_ms` 50, `deadline_ms` 20, `priority` 20). Each miss is blamed on a
+  slow reply from `server`.

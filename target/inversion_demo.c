@@ -11,10 +11,9 @@
  * The mutex deliberately has no priority inheritance, so when med preempts
  * low while low holds the mutex, the server (and so the controller) waits.
  *
- * TODO(human): confirm on a real QNX 8.0 target that this reproduces an
- * inversion. QNX may raise the server to the sender's priority on
- * MsgReceive; if the inversion does not show up, move the contended
- * resource so the controller itself blocks on the mutex (PLAN.md F21).
+ * Checked on QNX 8.0 (x86_64 QEMU): the server runs at the controller's
+ * priority (20) after MsgReceive, but still waits on the mutex while med
+ * preempts low, so the controller misses its 20 ms deadline by up to ~10 ms.
  * Thread names (pthread_setname_np) show up in the trace. The controller logs
  * "blackbox RELEASED"/"blackbox DONE" user events, which the tracelogger
  * adapter turns into job markers.
