@@ -25,7 +25,7 @@ Build order: (1) recorder + explainer must ship, (2) chaos injector should ship,
 - [x] F16b Live preview: `blackbox serve TRACE --config CONFIG [--port N]` serves the dashboard on 127.0.0.1, rebuilt and auto-refreshed on every request. Tests.
 - [x] F17 Docs: docs/codelab.md ("Debug a missed deadline on QNX in 30 minutes", with placeholders for real output) and a full README: install, usage, ASCII architecture diagram, and a QNX version / target / toolchain section.
 - [x] F17b Judge guide: docs/qnx-usage.md maps each QNX feature the project relies on (tracelogger, instrumented kernel, message passing, pidin, slog2) to the files and functions that use it, so reviewers can find it quickly. Mark anything unverified with TODO(human).
-- [ ] F18 [HUMAN] Install QNX SDP 8.0, boot QEMU, confirm the instrumented kernel and `tracelogger` work.
+- [x] F18 [HUMAN] Install QNX SDP 8.0, boot QEMU, confirm the instrumented kernel and `tracelogger` work.
 - [ ] F19 [HUMAN] Capture a real trace, export it to text, save it under tests/fixtures/real/.
 - [ ] F20 [HUMAN] Add `blackbox/adapters/tracelogger.py` mapping the real exported events to the internal format (or remove the HUMAN tag once the real fixture exists so the loop can do it).
 - [ ] F21 [HUMAN] Write and build the C demo services under target/ with qcc: a sensor, a controller and a deliberate priority inversion. Verify how QNX priority inheritance affects message passing; use a mutex without priority inheritance if needed.
