@@ -10,7 +10,7 @@ from .config import ConfigError, load_config
 from .dashboard import render_html
 from .explain import explain
 from .parser import ParseError, parse_file
-from .record import DEFAULT_REMOTE_PATH, record
+from .record import DEFAULT_REMOTE_PATH, decode, record
 from .report import build_report, report_json
 from .runner import RunnerError, SSHRunner
 from .serve import build_page, make_server
@@ -24,6 +24,10 @@ EPILOG = """exit codes:
   1  analysis ran, at least one deadline miss
   2  bad input (unreadable file, parse error, invalid config) or bad usage
 """
+
+
+DECODE_HELP = ("also decode the trace with the host traceprinter (QNX SDP) "
+               "into a .txt next to --out, ready for analyze")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", default="trace.kev", help="local file for the raw trace")
     r.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
                    help="trace file path on the target")
+    r.add_argument("--decode", action="store_true", help=DECODE_HELP)
     h = sub.add_parser("report-html", help="render a JSON report as a self-contained HTML page")
     h.add_argument("report", help="report JSON written by `analyze --json`")
     h.add_argument("out", help="HTML file to write")
@@ -65,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     cr.add_argument("--out", default="trace.kev", help="local file for the raw trace")
     cr.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
                     help="trace file path on the target")
+    cr.add_argument("--decode", action="store_true", help=DECODE_HELP)
     return p
 
 
@@ -91,10 +97,12 @@ def cmd_record(args, runner_factory) -> int:
     try:
         runner = runner_factory(args.target)
         record(runner, args.seconds, args.out, args.remote_path)
+        print(f"saved trace to {args.out}")
+        if args.decode:
+            print(f"decoded to {decode(args.out)}")
     except (OSError, ValueError, RunnerError) as exc:  # RunnerError is a RuntimeError
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
-    print(f"saved trace to {args.out}")
     return EXIT_OK
 
 
@@ -146,10 +154,12 @@ def cmd_chaos_run(args, runner_factory) -> int:
     try:
         record(runner_factory(args.target), args.seconds, args.out,
                args.remote_path, inject=commands)
+        print(f"ran scenario {scenario.name}; saved trace to {args.out}")
+        if args.decode:
+            print(f"decoded to {decode(args.out)}")
     except (OSError, ValueError, RunnerError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
-    print(f"ran scenario {scenario.name}; saved trace to {args.out}")
     return EXIT_OK
 
 

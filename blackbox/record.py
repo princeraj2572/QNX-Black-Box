@@ -7,7 +7,9 @@ The file copied back is raw; decode it with `traceprinter` on the host and map
 it with `blackbox/adapters/tracelogger.py`.
 """
 
+import os
 import shlex
+import subprocess
 from typing import Iterable, List
 
 from .runner import Runner, RunnerError
@@ -44,3 +46,17 @@ def record(runner: Runner, seconds: int, out_path: str,
         run(stop)  # never leave the logger running, even if a step failed
     runner.get(remote_path, out_path)
     return ran
+
+
+def decode(kev_path: str, exec_fn=None) -> str:
+    """Decode a raw trace with the SDP's host `traceprinter`; returns the .txt path."""
+    txt = os.path.splitext(kev_path)[0] + ".txt"
+    try:
+        with open(txt, "w", encoding="utf-8") as out:
+            p = (exec_fn or subprocess.run)(["traceprinter", "-f", kev_path], stdout=out,
+                        stderr=subprocess.PIPE, text=True)
+    except FileNotFoundError:
+        raise RunnerError("traceprinter not found: source the SDP's qnxsdp-env.sh first") from None
+    if p.returncode != 0:
+        raise RunnerError(f"traceprinter exited {p.returncode}: {p.stderr.strip()}")
+    return txt

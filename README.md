@@ -46,8 +46,18 @@ can edit the trace and watch the page change:
 
 Record a trace on the target over SSH (copies the raw tracelogger file back):
 
-    python3 -m blackbox record --target root@192.168.1.50 --seconds 10 --out trace.kev
-    traceprinter -f trace.kev > trace.txt    # SDP host tool; analyze/serve read trace.txt
+    python3 -m blackbox record --target root@192.168.1.50 --seconds 10 --out trace.kev --decode
+    python3 -m blackbox analyze trace.txt --config config.json
+
+`--decode` runs the SDP's host `traceprinter` (source `qnxsdp-env.sh` first)
+and writes `trace.txt` next to the raw trace; `chaos run` takes it too. For a
+QEMU target behind a forwarded port, add an alias to `~/.ssh/config` and use
+`--target qnxvm`:
+
+    Host qnxvm
+        HostName localhost
+        Port 2222
+        User root
 
 Inject faults while recording. `--dry-run` only prints the commands that would
 run on the target and connects to nothing:

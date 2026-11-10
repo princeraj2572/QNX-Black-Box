@@ -1,8 +1,10 @@
 import io
 import os
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 from blackbox.cli import main
 from blackbox.record import record
@@ -82,6 +84,39 @@ class RecordCliTest(unittest.TestCase):
     def test_record_bad_seconds_exits_2(self):
         code, _, err = self.run_cli(["record", "--target", "h", "--seconds", "0"], {})
         self.assertEqual(code, 2)
+
+    def test_record_decode_runs_traceprinter(self):
+        calls = []
+
+        def fake_run(argv, stdout, **kw):
+            calls.append(argv)
+            stdout.write("TRACEPRINTER version 1.02\n")
+            return subprocess.CompletedProcess(argv, 0, stderr="")
+
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "t.kev")
+            with mock.patch("blackbox.record.subprocess.run", fake_run):
+                code, out, err = self.run_cli(
+                    ["record", "--target", "h", "--seconds", "3", "--out", dest, "--decode"],
+                    {"/tmp/blackbox.kev": b"RAW"})
+            self.assertEqual(code, 0, err)
+            self.assertEqual(calls, [["traceprinter", "-f", dest]])
+            with open(os.path.join(d, "t.txt"), encoding="utf-8") as f:
+                self.assertIn("TRACEPRINTER", f.read())
+            self.assertIn("decoded to", out)
+
+    def test_decode_without_sdp_is_a_clear_error(self):
+        def missing(*a, **kw):
+            raise FileNotFoundError("traceprinter")
+
+        with tempfile.TemporaryDirectory() as d:
+            dest = os.path.join(d, "t.kev")
+            with mock.patch("blackbox.record.subprocess.run", missing):
+                code, _, err = self.run_cli(
+                    ["record", "--target", "h", "--seconds", "3", "--out", dest, "--decode"],
+                    {"/tmp/blackbox.kev": b"RAW"})
+            self.assertEqual(code, 2)
+            self.assertIn("qnxsdp-env.sh", err)
 
 
 if __name__ == "__main__":
