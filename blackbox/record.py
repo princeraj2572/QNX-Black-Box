@@ -1,9 +1,10 @@
 """Record a trace on the target with tracelogger and copy it back.
 
-TODO(human): confirm the tracelogger flags on QNX 8.0 (output file option,
-running it in the background) and that `slay tracelogger` stops it cleanly.
-The file copied back is the raw tracelogger output; converting it to the
-internal text format is the adapter's job (PLAN.md F20).
+Checked on QNX SDP 8.0 (x86_64 QEMU): `-w` records wide events (thread
+priorities, which the adapter needs), `-n 0` logs until stopped instead of the
+default 32 buffers, and `slay tracelogger` stops it and leaves a valid file.
+The file copied back is raw; decode it with `traceprinter` on the host and map
+it with `blackbox/adapters/tracelogger.py`.
 """
 
 import shlex
@@ -24,7 +25,7 @@ def record(runner: Runner, seconds: int, out_path: str,
     if isinstance(seconds, bool) or not isinstance(seconds, int) or seconds <= 0:
         raise ValueError("seconds must be a positive integer")
     remote = shlex.quote(remote_path)
-    start = f"(tracelogger -f {remote} >/dev/null 2>&1 &)"
+    start = f"(tracelogger -w -n 0 -f {remote} >/dev/null 2>&1 &)"
     stop = "slay tracelogger"
     ran = []
 

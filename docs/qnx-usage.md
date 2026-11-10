@@ -13,7 +13,8 @@ fixtures and a mock runner.
 | QNX feature | File | Symbols | What it does here |
 |---|---|---|---|
 | Instrumented kernel and tracelogger | `blackbox/record.py` | `record` | Starts tracelogger on the target, waits, stops it with slay, and copies the trace file back over scp. |
-| Instrumented kernel and tracelogger | `docs/trace-format.md` | | Internal format that real trace events must be mapped onto (adapter is PLAN.md F20). |
+| Instrumented kernel and tracelogger | `docs/trace-format.md` | | Internal format the analyzer reads. |
+| Instrumented kernel and tracelogger | `blackbox/adapters/tracelogger.py` | `convert` | Maps `traceprinter` text from a wide-mode (tracelogger -w) trace to the internal format. |
 | Message passing (send, receive, reply) | `blackbox/events.py` | `MsgSend`, `MsgReceive`, `MsgReply` | Event types for the three sides of a QNX message exchange. |
 | Message passing (send, receive, reply) | `blackbox/blocking.py` | `build_blocks`, `chain_at` | A sender is blocked on its peer from send until the peer's reply. |
 | Message passing (send, receive, reply) | `blackbox/inversion.py` | `find_inversions` | Finds a high-priority sender blocked on a lower-priority server while a medium-priority thread runs. |
@@ -33,8 +34,6 @@ fixtures and a mock runner.
 
 ## To verify on a real target
 
-- TODO(human): tracelogger flags used by `record` (output file option,
-  running in the background) and that slay stops it cleanly.
 - TODO(human): the instrumented kernel image and boot steps needed for
   tracing on QEMU and on Raspberry Pi 5 (PLAN.md F18).
 - TODO(human): slay -s, on -p and the shell variable SECONDS behave as the

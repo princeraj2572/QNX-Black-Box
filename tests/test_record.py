@@ -8,7 +8,7 @@ from blackbox.cli import main
 from blackbox.record import record
 from blackbox.runner import MockRunner, Result, RunnerError
 
-START = "(tracelogger -f /tmp/blackbox.kev >/dev/null 2>&1 &)"
+START = "(tracelogger -w -n 0 -f /tmp/blackbox.kev >/dev/null 2>&1 &)"
 
 
 class RecordTest(unittest.TestCase):

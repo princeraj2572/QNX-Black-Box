@@ -8,7 +8,7 @@ from blackbox.cli import main
 from blackbox.runner import MockRunner
 
 SCENARIO = os.path.join(os.path.dirname(__file__), "fixtures", "scenario_chaos.json")
-START = "(tracelogger -f /tmp/blackbox.kev >/dev/null 2>&1 &)"
+START = "(tracelogger -w -n 0 -f /tmp/blackbox.kev >/dev/null 2>&1 &)"
 
 
 def run_cli(argv, runner=None):
