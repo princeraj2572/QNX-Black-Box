@@ -1,6 +1,8 @@
 """Map `traceprinter` text from a QNX 8.0 wide-mode trace to the internal format.
 
 Record with `tracelogger -w`: fast-mode events carry no thread priority.
+Job markers come from user string events the traced program logs itself,
+e.g. `trace_logf(100, "blackbox RELEASED")`; they apply to the running thread.
 
     python -m blackbox.adapters.tracelogger trace.txt > internal.txt
 """
@@ -13,6 +15,8 @@ from ..events import Event, MsgReceive, MsgReply, MsgSend, Run, ThreadState
 
 HEAD = re.compile(r"t:0x([0-9a-f]+) CPU:(\d+) (\w+)\s*:(\S+)\s*(.*)")
 FIELD = re.compile(r"(\w+):(\S+)")
+STR = re.compile(r'STR:"([^"]*)"')
+MARK = re.compile(r"blackbox (RELEASED|DONE)")
 CPS = re.compile(r"TRACE_CYCLES_PER_SEC::\s*(\d+)")
 
 
@@ -29,6 +33,9 @@ def _records(lines):
             if cur:
                 yield cur
             lsb, cpu, f = int(m[1], 16), int(m[2]), dict(FIELD.findall(m[5]))
+            s = STR.search(m[5])
+            if s:
+                f["STR"] = s[1]
             if m[4] == "TIME":
                 msb[cpu] = int(f["msb"], 16)
             elif cpu in last and lsb < last[cpu]:
@@ -92,6 +99,10 @@ def convert(text: str) -> List[Event]:
                     out.append(MsgReceive(ns, *me, peer=sent[1][0]))
             elif ev == "REPLY_MESSAGE" and "pid" in f and "tid" in f:
                 out.append(MsgReply(ns, *me, peer=ident(f["pid"], f["tid"])[0]))
+        elif cls == "USREVENT" and cpu in running:
+            mark = MARK.fullmatch(f.get("STR", ""))
+            if mark:
+                out.append(ThreadState(ns, *running[cpu], state=mark[1]))
     out.sort(key=lambda e: e.ts_ns)
     return out
 

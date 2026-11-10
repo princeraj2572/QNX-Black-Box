@@ -62,7 +62,10 @@ The analyzer finds jobs through two reserved `THREAD_STATE` values:
 A job is the interval from `RELEASED` to the next `DONE` of the same thread.
 All other `state` values are free-form.
 
-TODO(human): decide how real tracelogger events yield RELEASED and DONE.
+On a real target the traced program emits them itself as user string events,
+`trace_logf(code, "blackbox RELEASED")` and `"blackbox DONE"` (any code); the
+adapter applies each to the thread running on that CPU. See
+`target/inversion_demo.c`.
 
 ## Example
 

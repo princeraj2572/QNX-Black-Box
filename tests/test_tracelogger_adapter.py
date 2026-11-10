@@ -18,6 +18,7 @@ t:0xfffffff0 CPU:00 PROCESS         :PROCTHREAD_NAME
                        tid:2
                       name:controller
 t:0xfffffff1 CPU:00 THREAD          :THRUNNING          pid:7 tid:2 priority:20 policy:1
+t:0xfffffff1 CPU:00 USREVENT        :EVENT:100          STR:"blackbox RELEASED", d0:0x52206262 d1:0x41454c45 d2:0x00444553 d3:0x00000000
 t:0xfffffff2 CPU:00 COMM            :SND_MESSAGE        rcvid:0x0001 pid:9
 t:0xfffffff3 CPU:00 THREAD          :THREPLY            pid:7 tid:2 priority:20 policy:1
 t:0x00000005 CPU:00 THREAD          :THREADY            pid:7 tid:2 priority:20 policy:1
@@ -25,6 +26,8 @@ t:0xfffffff4 CPU:01 CONTROL         :TIME               msb:0x00000000 lsb(offse
 t:0xfffffff4 CPU:01 THREAD          :THRUNNING          pid:9 tid:1 priority:5 policy:1
 t:0xfffffff5 CPU:01 COMM            :REC_MESSAGE        rcvid:0x0001 pid:9
 t:0xfffffff6 CPU:01 COMM            :REPLY_MESSAGE      tid:2 pid:7
+t:0xfffffff7 CPU:01 USREVENT        :EVENT:100          STR:"blackbox DONE", d0:0x44206262 d1:0x00454e4f
+t:0xfffffff8 CPU:01 USREVENT        :EVENT:100          STR:"other text", d0:0x44206262
 """
 
 
@@ -34,11 +37,13 @@ class SnippetTest(unittest.TestCase):
         lines = [e.to_line() for e in ev]
         self.assertEqual(lines, [
             "1 RUN tid=7002 name=controller prio=20",
+            "1 THREAD_STATE tid=7002 name=controller prio=20 state=RELEASED",
             "2 MSG_SEND tid=7002 name=controller prio=20 peer=9001",
             "3 THREAD_STATE tid=7002 name=controller prio=20 state=REPLY",
             "4 RUN tid=9001 name=pid9.1 prio=5",
             "5 MSG_RECEIVE tid=9001 name=pid9.1 prio=5 peer=7002",
             "6 MSG_REPLY tid=9001 name=pid9.1 prio=5 peer=7002",
+            "7 THREAD_STATE tid=9001 name=pid9.1 prio=5 state=DONE",
             "21 THREAD_STATE tid=7002 name=controller prio=20 state=READY",
         ])
 

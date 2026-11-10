@@ -41,5 +41,3 @@ fixtures and a mock runner.
 - TODO(human): how priority inheritance changes message-passing priorities
   in real traces, since the detectors compare the priorities recorded in each
   event (PLAN.md F21).
-- TODO(human): how real tracelogger events yield the RELEASED and DONE job
-  markers.
