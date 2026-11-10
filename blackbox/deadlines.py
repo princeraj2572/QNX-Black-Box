@@ -31,7 +31,7 @@ class Job:
 def find_jobs(events: List[Event], config: Dict[str, ThreadConfig]) -> List[Job]:
     """Return every job of configured threads, ordered by release time."""
     end_ns = max((e.ts_ns for e in events), default=0)
-    open_jobs: Dict[str, ThreadState] = {}
+    open_jobs: Dict[int, ThreadState] = {}  # by tid: names can repeat across processes
     jobs = []
 
     def close(rel: ThreadState, done_ns: Optional[int]):
@@ -44,11 +44,11 @@ def find_jobs(events: List[Event], config: Dict[str, ThreadConfig]) -> List[Job]
         if not isinstance(e, ThreadState) or e.name not in config:
             continue
         if e.state == RELEASED:
-            if e.name in open_jobs:  # released again before finishing
-                close(open_jobs.pop(e.name), None)
-            open_jobs[e.name] = e
-        elif e.state == DONE and e.name in open_jobs:
-            close(open_jobs.pop(e.name), e.ts_ns)
+            if e.tid in open_jobs:  # released again before finishing
+                close(open_jobs.pop(e.tid), None)
+            open_jobs[e.tid] = e
+        elif e.state == DONE and e.tid in open_jobs:
+            close(open_jobs.pop(e.tid), e.ts_ns)
     for rel in open_jobs.values():
         close(rel, None)
     return sorted(jobs, key=lambda j: (j.release_ns, j.name))

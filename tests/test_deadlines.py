@@ -52,6 +52,17 @@ class DeadlineTest(unittest.TestCase):
         jobs = find_jobs(events, CONFIG)
         self.assertEqual([j.missed for j in jobs], [True, False])
 
+    def test_same_name_in_two_threads_kept_apart(self):
+        # e.g. a controller restarted by a chaos run while the old one finishes
+        events = parse_text(
+            "0 THREAD_STATE tid=4 name=controller prio=20 state=RELEASED\n"
+            "1000000 THREAD_STATE tid=5 name=controller prio=20 state=RELEASED\n"
+            "3000000 THREAD_STATE tid=4 name=controller prio=20 state=DONE\n"
+            "4000000 THREAD_STATE tid=5 name=controller prio=20 state=DONE\n"
+        )
+        jobs = find_jobs(events, CONFIG)
+        self.assertEqual([(j.tid, j.response_ns) for j in jobs], [(4, 3_000_000), (5, 3_000_000)])
+
 
 if __name__ == "__main__":
     unittest.main()
