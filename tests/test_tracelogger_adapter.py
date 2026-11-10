@@ -41,7 +41,7 @@ class SnippetTest(unittest.TestCase):
             "1 THREAD_STATE tid=7002 name=controller prio=20 state=RELEASED",
             "2 MSG_SEND tid=7002 name=controller prio=20 peer=9001",
             "3 THREAD_STATE tid=7002 name=controller prio=20 state=REPLY",
-            "4 RUN tid=9001 name=pid9.1 prio=5",
+            "4 RUN tid=9001 name=pid9.1 prio=5 cpu=1",
             "5 MSG_RECEIVE tid=9001 name=pid9.1 prio=5 peer=7002",
             "6 MSG_REPLY tid=9001 name=pid9.1 prio=5 peer=7002",
             "7 THREAD_STATE tid=9001 name=pid9.1 prio=5 state=DONE",

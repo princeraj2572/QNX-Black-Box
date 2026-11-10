@@ -99,7 +99,7 @@ def _apply(rec, ns, ident, running, pending, out):
         prio = int(f["priority"])
         if ev == "THRUNNING":
             running[cpu] = (tid, name, prio)
-            out.append(Run(ns, tid, name, prio))
+            out.append(Run(ns, tid, name, prio, cpu=cpu))
         else:
             out.append(ThreadState(ns, tid, name, prio, state=ev[2:]))
     elif cls == "COMM" and cpu in running:

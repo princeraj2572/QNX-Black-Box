@@ -46,7 +46,7 @@ One event per line:
 
 | Event          | Extra fields | Meaning                                   |
 |----------------|--------------|-------------------------------------------|
-| `RUN`          | none         | Thread starts running on a CPU            |
+| `RUN`          | `cpu` (optional, default 0) | Thread starts running on CPU `cpu`; it runs until the next `RUN` on that CPU |
 | `THREAD_STATE` | `state`      | Thread enters `state` (token, e.g. `READY`, `BLOCKED`) |
 | `MSG_SEND`     | `peer`       | Thread sends a message to thread `peer`   |
 | `MSG_RECEIVE`  | `peer`       | Thread receives a message from thread `peer` |

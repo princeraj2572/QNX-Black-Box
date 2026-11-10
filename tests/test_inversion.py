@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from blackbox.inversion import find_inversions
+from blackbox.inversion import find_inversions, run_intervals
 from blackbox.parser import parse_file, parse_text
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -14,6 +14,16 @@ class InversionTest(unittest.TestCase):
         self.assertEqual((inv.start_ns, inv.end_ns), (200, 700))
         self.assertEqual(inv.block.blocked_name, "high")
         self.assertEqual(inv.block.on_name, "low")
+
+    def test_run_intervals_are_per_cpu(self):
+        events = parse_text(
+            "0 RUN tid=1 name=a prio=1\n"
+            "2 RUN tid=2 name=b prio=1 cpu=1\n"
+            "5 RUN tid=3 name=c prio=1\n"
+            "9 RUN tid=4 name=d prio=1 cpu=1\n"
+        )
+        spans = [(r.name, lo, hi) for r, lo, hi in run_intervals(events)]
+        self.assertEqual(spans, [("a", 0, 5), ("b", 2, 9), ("c", 5, 9), ("d", 9, 9)])
 
     def test_no_inversion_when_blocker_runs(self):
         text = (

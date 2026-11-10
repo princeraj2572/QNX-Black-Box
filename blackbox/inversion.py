@@ -1,8 +1,7 @@
 """Priority inversion: a high-priority thread blocked on a lower-priority one
 while a medium-priority thread runs.
 
-Assumes a single CPU: the running thread is the one from the latest RUN event.
-shortcut: no CPU id in the internal format, add one to support SMP traces.
+A thread runs from its RUN event until the next RUN on the same CPU.
 """
 
 from dataclasses import dataclass
@@ -26,8 +25,14 @@ def run_intervals(events: List[Event]) -> List[Tuple[Run, int, int]]:
     """(run event, start_ns, end_ns) for each stretch a thread was running."""
     runs = sorted((e for e in events if isinstance(e, Run)), key=lambda e: e.ts_ns)
     trace_end = max((e.ts_ns for e in events), default=0)
-    ends = [r.ts_ns for r in runs[1:]] + [trace_end]
-    return [(r, r.ts_ns, end) for r, end in zip(runs, ends)]
+    out, last = [], {}  # last: cpu -> index in out of the run still open there
+    for r in runs:
+        if r.cpu in last:
+            prev = out[last[r.cpu]]
+            out[last[r.cpu]] = (prev[0], prev[1], r.ts_ns)
+        last[r.cpu] = len(out)
+        out.append((r, r.ts_ns, trace_end))
+    return out
 
 
 def find_inversions(events: List[Event]) -> List[Inversion]:

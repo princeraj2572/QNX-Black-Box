@@ -19,9 +19,10 @@ class Event:
             raise ValueError("name must be non-empty with no whitespace or '='")
 
     def to_line(self) -> str:
-        """Render as `<ts_ns> <EVENT> key=value ...`."""
+        """Render as `<ts_ns> <EVENT> key=value ...`; optional fields at their default are left out."""
         pairs = " ".join(
-            f"{f.name}={getattr(self, f.name)}" for f in fields(self) if f.name != "ts_ns"
+            f"{f.name}={getattr(self, f.name)}" for f in fields(self)
+            if f.name != "ts_ns" and not (f.name == "cpu" and self.cpu == 0)
         )
         return f"{self.ts_ns} {self.kind} {pairs}"
 
@@ -31,6 +32,7 @@ class Run(Event):
     """Thread starts running on a CPU."""
 
     kind: ClassVar[str] = "RUN"
+    cpu: int = 0  # optional; traces without it are treated as single-CPU
 
 
 @dataclass(frozen=True)
