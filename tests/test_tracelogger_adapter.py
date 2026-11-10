@@ -1,4 +1,5 @@
 import os
+import random
 import unittest
 
 from blackbox.adapters.tracelogger import AdapterError, convert
@@ -88,6 +89,47 @@ class RealTraceTest(unittest.TestCase):
         with open(os.path.join(REAL, "test.txt"), encoding="utf-8") as f:
             with self.assertRaises(AdapterError):
                 convert(f.read())
+
+
+class DamagedTraceTest(unittest.TestCase):
+    """A damaged capture must give events or an AdapterError, never a crash."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(REAL, "wide.txt"), encoding="utf-8") as f:
+            cls.text = f.read()
+
+    def check(self, text):
+        try:
+            convert(text)
+        except AdapterError:
+            pass
+
+    def test_truncated(self):
+        rnd = random.Random(1)
+        for _ in range(20):
+            self.check(self.text[: rnd.randrange(len(self.text))])
+
+    def test_dropped_lines_still_convert(self):
+        rnd = random.Random(2)
+        lines = self.text.splitlines()
+        for _ in range(10):
+            events = convert("\n".join(l for l in lines if rnd.random() > 0.05))
+            self.assertTrue(events)
+
+    def test_corrupted_characters(self):
+        rnd = random.Random(3)
+        for _ in range(20):
+            chars = list(self.text)
+            for _ in range(rnd.choice((5, 200))):
+                chars[rnd.randrange(len(chars))] = rnd.choice('x:0 "\n')
+            self.check("".join(chars))
+
+    def test_mostly_garbage_is_rejected(self):
+        head, _, body = self.text.partition("-- KERNEL EVENTS --")
+        garbled = "\n".join(l.replace("pid:", "pid:x") for l in body.splitlines())
+        with self.assertRaises(AdapterError):
+            convert(head + garbled)
 
 
 if __name__ == "__main__":

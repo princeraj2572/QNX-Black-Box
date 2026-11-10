@@ -36,7 +36,7 @@ def _records(lines):
             s = STR.search(m[5])
             if s:
                 f["STR"] = s[1]
-            if m[4] == "TIME":
+            if m[4] == "TIME" and re.fullmatch(r"0x[0-9a-f]+", f.get("msb", "")):
                 msb[cpu] = int(f["msb"], 16)
             elif cpu in last and lsb < last[cpu]:
                 msb[cpu] = msb.get(cpu, 0) + 1  # low 32 bits wrapped inside a buffer
@@ -44,7 +44,7 @@ def _records(lines):
             cur = [(msb.get(cpu, 0) << 32) | lsb, cpu, m[3], m[4], f]
         elif cur and line[:1].isspace() and ":" in line:
             key, _, value = line.strip().partition(":")
-            cur[4][key] = value.strip()
+            cur[4].setdefault(key, value.strip())  # a lost header line must not override fields
     if cur:
         yield cur
 
@@ -69,42 +69,55 @@ def convert(text: str) -> List[Event]:
     def ident(pid, tid):
         proc = (pname.get(pid) or f"pid{pid}").rsplit("/", 1)[-1]
         name = tname.get((pid, tid)) or f"{proc}.{tid}"
-        # shortcut: assumes tid < 1000 per process, widen if real traces exceed it
+        if int(tid) >= 1000:
+            raise AdapterError(f"tid {tid} in pid {pid} does not fit the pid*1000+tid scheme")
         return int(pid) * 1000 + int(tid), re.sub(r"[\s=]", "_", name)
 
-    start, running, pending, out = recs[0][0], {}, {}, []
-    for cyc, cpu, cls, ev, f in recs:
-        ns = (cyc - start) * 10**9 // cps
-        if cls == "THREAD" and "pid" in f and "tid" in f:
-            if "priority" not in f:
-                if ev == "THRUNNING":
-                    raise AdapterError("no thread priorities: record with tracelogger -w")
-                continue  # THCREATE/THDESTROY carry no priority
-            tid, name = ident(f["pid"], f["tid"])
-            prio = int(f["priority"])
-            if ev == "THRUNNING":
-                running[cpu] = (tid, name, prio)
-                out.append(Run(ns, tid, name, prio))
-            else:
-                out.append(ThreadState(ns, tid, name, prio, state=ev[2:]))
-        elif cls == "COMM" and cpu in running:
-            me = running[cpu]
-            if ev == "SND_MESSAGE":
-                # The receiver is only known once it picks the message up.
-                pending[f.get("rcvid")] = (ns, me)
-            elif ev == "REC_MESSAGE" and me[0] // 1000 == int(f.get("pid", -1)):
-                sent = pending.pop(f.get("rcvid"), None)
-                if sent:
-                    out.append(MsgSend(sent[0], *sent[1], peer=me[0]))
-                    out.append(MsgReceive(ns, *me, peer=sent[1][0]))
-            elif ev == "REPLY_MESSAGE" and "pid" in f and "tid" in f:
-                out.append(MsgReply(ns, *me, peer=ident(f["pid"], f["tid"])[0]))
-        elif cls == "USREVENT" and cpu in running:
-            mark = MARK.fullmatch(f.get("STR", ""))
-            if mark:
-                out.append(ThreadState(ns, *running[cpu], state=mark[1]))
+    start, running, pending, out, bad = recs[0][0], {}, {}, [], 0
+    for rec in recs:
+        try:
+            _apply(rec, (rec[0] - start) * 10**9 // cps, ident, running, pending, out)
+        except AdapterError:
+            raise
+        except (ValueError, KeyError):
+            bad += 1  # garbled record, e.g. a truncated last line
+    if bad > max(10, len(recs) // 100):
+        raise AdapterError(f"{bad} of {len(recs)} records are unreadable: is the file corrupt?")
     out.sort(key=lambda e: e.ts_ns)
     return out
+
+
+def _apply(rec, ns, ident, running, pending, out):
+    """Turn one record into internal events, appended to `out`."""
+    _, cpu, cls, ev, f = rec
+    if cls == "THREAD" and "pid" in f and "tid" in f:
+        if "priority" not in f:
+            if ev == "THRUNNING":
+                raise AdapterError("no thread priorities: record with tracelogger -w")
+            return  # THCREATE/THDESTROY carry no priority
+        tid, name = ident(f["pid"], f["tid"])
+        prio = int(f["priority"])
+        if ev == "THRUNNING":
+            running[cpu] = (tid, name, prio)
+            out.append(Run(ns, tid, name, prio))
+        else:
+            out.append(ThreadState(ns, tid, name, prio, state=ev[2:]))
+    elif cls == "COMM" and cpu in running:
+        me = running[cpu]
+        if ev == "SND_MESSAGE":
+            # The receiver is only known once it picks the message up.
+            pending[f.get("rcvid")] = (ns, me)
+        elif ev == "REC_MESSAGE" and me[0] // 1000 == int(f.get("pid", -1)):
+            sent = pending.pop(f.get("rcvid"), None)
+            if sent:
+                out.append(MsgSend(sent[0], *sent[1], peer=me[0]))
+                out.append(MsgReceive(ns, *me, peer=sent[1][0]))
+        elif ev == "REPLY_MESSAGE" and "pid" in f and "tid" in f:
+            out.append(MsgReply(ns, *me, peer=ident(f["pid"], f["tid"])[0]))
+    elif cls == "USREVENT" and cpu in running:
+        mark = MARK.fullmatch(f.get("STR", ""))
+        if mark:
+            out.append(ThreadState(ns, *running[cpu], state=mark[1]))
 
 
 def main(argv=None) -> int:
