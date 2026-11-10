@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from .causes import ReplyDelay, Starvation, find_reply_delays, find_starvation
+from .causes import (MutexWait, ReplyDelay, Starvation, find_mutex_waits, find_reply_delays,
+                     find_starvation)
 from .config import ThreadConfig
 from .deadlines import Job, find_misses
 from .events import Event
@@ -17,14 +18,17 @@ class Analysis:
     inversions: List[Inversion]
     starvation: List[Starvation]
     reply_delays: List[ReplyDelay]
+    mutex_waits: List[MutexWait]
 
 
 def analyze(events: List[Event], config: Dict[str, ThreadConfig]) -> Analysis:
     misses = find_misses(events, config)
+    delays = find_reply_delays(events, misses, config)
     return Analysis(
         trace_end_ns=max((e.ts_ns for e in events), default=0),
         misses=misses,
         inversions=find_inversions(events),
         starvation=find_starvation(events, misses, config),
-        reply_delays=find_reply_delays(events, misses, config),
+        reply_delays=delays,
+        mutex_waits=find_mutex_waits(events, misses, config, delays),
     )

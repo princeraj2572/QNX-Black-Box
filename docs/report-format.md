@@ -39,5 +39,6 @@ Each cause has a `type`:
 | `priority_inversion` | `blocked`, `blocked_on`, `medium`, `start_ns`, `end_ns` |
 | `cpu_starvation`     | `thread`, `priority`, `run_ns` |
 | `slow_reply`         | `from`, `send_ns`, `duration_ns` |
+| `mutex_wait`         | `thread`, `priority`, `start_ns`, `end_ns`, `ran` (list of `thread`, `priority`, `run_ns`: lower-priority threads that ran during the wait) |
 
 `misses` is empty when no deadline was missed. `timeline` is sorted by `ts_ns`.

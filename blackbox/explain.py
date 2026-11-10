@@ -54,6 +54,19 @@ def explain_miss(job, a: Analysis, config: Dict[str, ThreadConfig]) -> List[str]
                 f"  - Slow reply: {job.name} sent a message to {d.block.on_name} at "
                 f"{ms(d.block.start_ns)} and waited {ms(d.duration_ns)} for the reply."
             )
+    for w in a.mutex_waits:
+        if w.job == job:
+            line = (f"  - Mutex wait: {w.name} (priority {w.prio}) waited "
+                    f"{ms(w.end_ns - w.start_ns)} on a mutex from {ms(w.start_ns)}.")
+            if w.ran:
+                line += " Meanwhile " + " and ".join(
+                    f"{n} (priority {p}) ran {ms(t)}" for n, p, t in w.ran) + "."
+            if len({p for _, p, _ in w.ran}) > 1:
+                low, high = min(w.ran, key=lambda r: r[1]), max(w.ran, key=lambda r: r[1])
+                line += (f" Likely priority inversion: if {low[0]} holds the mutex, {high[0]} "
+                         f"preempted it while {w.name} waited. A mutex with priority "
+                         f"inheritance (PTHREAD_PRIO_INHERIT) prevents this.")
+            lines.append(line)
     if len(lines) == 1:
         lines.append("  - No cause was identified from the trace.")
     return lines

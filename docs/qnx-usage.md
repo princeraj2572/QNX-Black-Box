@@ -43,7 +43,8 @@ fixtures and a mock runner.
   (20) from the moment it receives. The demo still misses its deadline because
   the server then waits on a mutex without inheritance held by `low` (5) while
   `med` (10) runs; with `--fixed` (PTHREAD_PRIO_INHERIT) the misses go from
-  10 to 0. The analyzer reports this as a slow reply from the server;
-  it does not yet name the mutex holder, because uncontended mutex locks never
-  enter the kernel and so leave no owner in the trace. TODO(human): decide
-  whether to model mutex waits.
+  10 to 0. The analyzer reports a slow reply from the server, then the
+  server's mutex wait and the lower-priority threads that ran during it (`med`
+  and `low`), flagged as a likely priority inversion. It cannot name the
+  holder: uncontended mutex locks never enter the kernel, so the trace has no
+  owner.

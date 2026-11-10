@@ -42,6 +42,16 @@ def _causes(job, a: Analysis) -> List[dict]:
                 "send_ns": d.block.start_ns,
                 "duration_ns": d.duration_ns,
             })
+    for w in a.mutex_waits:
+        if w.job == job:
+            causes.append({
+                "type": "mutex_wait",
+                "thread": w.name,
+                "priority": w.prio,
+                "start_ns": w.start_ns,
+                "end_ns": w.end_ns,
+                "ran": [{"thread": n, "priority": p, "run_ns": t} for n, p, t in w.ran],
+            })
     return causes
 
 

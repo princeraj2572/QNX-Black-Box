@@ -33,6 +33,14 @@ class RealDemoTest(unittest.TestCase):
         self.assertEqual(len(self.result.misses), 10)  # the demo printed 10 too
         self.assertEqual(self.fixed.misses, [])
 
+    def test_mutex_wait_points_at_med_and_low(self):
+        by_job = {w.job: w for w in self.result.mutex_waits}
+        self.assertEqual(set(by_job), set(self.result.misses))
+        for w in by_job.values():
+            self.assertEqual((w.name, w.prio), ("server", 20))
+            self.assertLessEqual({"med", "low"}, {n for n, _, _ in w.ran})
+        self.assertEqual(self.fixed.mutex_waits, [])
+
     def test_brief_kernel_threads_are_not_blamed(self):
         # 5% of the 20 ms deadline; interrupt threads run for microseconds
         self.assertTrue(all(s.run_ns >= 1_000_000 for s in self.result.starvation))
