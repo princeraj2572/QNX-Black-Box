@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
         "analyze", help="explain deadline misses in a trace",
         epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    a.add_argument("trace", help="trace file in the internal format")
+    a.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
     a.add_argument("--config", required=True, help="thread config JSON")
     a.add_argument("--json", metavar="OUT", help="also write the JSON report to OUT")
     r = sub.add_parser("record", help="record a trace on the target and copy it back")
@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     h.add_argument("report", help="report JSON written by `analyze --json`")
     h.add_argument("out", help="HTML file to write")
     s = sub.add_parser("serve", help="live preview: serve the dashboard for a trace on localhost")
-    s.add_argument("trace", help="trace file in the internal format")
+    s.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
     s.add_argument("--config", required=True, help="thread config JSON")
     s.add_argument("--port", type=int, default=8000, help="port on 127.0.0.1 (default 8000)")
     c = sub.add_parser("chaos", help="inject faults on the target")

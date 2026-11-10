@@ -7,8 +7,8 @@ from .events import EVENT_TYPES, Event
 
 
 class ParseError(ValueError):
-    def __init__(self, lineno: int, message: str):
-        super().__init__(f"line {lineno}: {message}")
+    def __init__(self, lineno, message: str):
+        super().__init__(message if lineno is None else f"line {lineno}: {message}")
         self.lineno = lineno
 
 
@@ -64,5 +64,19 @@ def parse_text(text: str) -> List[Event]:
 
 
 def parse_file(path: str) -> List[Event]:
-    with open(path, "r", encoding="utf-8") as f:
-        return parse_lines(f)
+    """Read the internal format, or traceprinter text, which is converted."""
+    with open(path, "rb") as f:
+        data = f.read()
+    if b"\0" in data[:4096]:
+        raise ParseError(None, f"{path} is a binary trace: decode it with traceprinter first")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ParseError(None, f"{path} is not UTF-8 text: {exc}") from None
+    if "TRACE_CYCLES_PER_SEC::" in text[:4096]:
+        from .adapters.tracelogger import AdapterError, convert
+        try:
+            return convert(text)
+        except AdapterError as exc:
+            raise ParseError(None, f"{path}: {exc}") from None
+    return parse_text(text)

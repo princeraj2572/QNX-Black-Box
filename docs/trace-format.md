@@ -11,6 +11,8 @@ wide-mode capture (`tracelogger -w`; fast mode has no priorities):
 
     python -m blackbox.adapters.tracelogger trace.txt > internal.txt
 
+`analyze` and `serve` also accept `traceprinter` text directly and convert it.
+
 - `ts_ns`: from the 64-bit cycle count (`CONTROL TIME` msb plus `t:` lsb)
   and `TRACE_CYCLES_PER_SEC`, relative to the first event.
 - `tid`: `pid * 1000 + tid`, since QNX thread ids are per process.

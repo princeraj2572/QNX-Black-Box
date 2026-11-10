@@ -55,6 +55,35 @@ class CliTest(unittest.TestCase):
         self.assertEqual(run("analyze").returncode, 2)
         self.assertEqual(run().returncode, 2)
 
+    def test_reads_traceprinter_text_directly(self):
+        text = (
+            "  TRACE_CYCLES_PER_SEC:: 1000000000\n"
+            "t:0x00000001 CPU:00 CONTROL         :TIME               msb:0x00000000 lsb(offset):0x00000001\n"
+            "t:0x00000001 CPU:00 PROCESS         :PROCTHREAD_NAME\n"
+            "                       pid:7\n"
+            "                       tid:1\n"
+            "                      name:high\n"
+            "t:0x00000002 CPU:00 THREAD          :THRUNNING          pid:7 tid:1 priority:20 policy:1\n"
+            't:0x00000003 CPU:00 USREVENT        :EVENT:100          STR:"blackbox RELEASED", d0:0x0\n'
+            't:0x01000000 CPU:00 USREVENT        :EVENT:100          STR:"blackbox DONE", d0:0x0\n'
+        )
+        with tempfile.TemporaryDirectory() as d:
+            trace = os.path.join(d, "trace.txt")
+            with open(trace, "w") as f:
+                f.write(text)
+            r = run("analyze", trace, "--config", CONFIG)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("high missed its 5.0 ms deadline", r.stdout)
+
+    def test_binary_kev_is_a_clear_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            kev = os.path.join(d, "trace.kev")
+            with open(kev, "wb") as f:
+                f.write(bytes([0x88, 0, 0, 0, 0xff]) * 10)
+            r = run("analyze", kev, "--config", CONFIG)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("decode it with traceprinter", r.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

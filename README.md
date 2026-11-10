@@ -47,6 +47,7 @@ can edit the trace and watch the page change:
 Record a trace on the target over SSH (copies the raw tracelogger file back):
 
     python3 -m blackbox record --target root@192.168.1.50 --seconds 10 --out trace.kev
+    traceprinter -f trace.kev > trace.txt    # SDP host tool; analyze/serve read trace.txt
 
 Inject faults while recording. `--dry-run` only prints the commands that would
 run on the target and connects to nothing:

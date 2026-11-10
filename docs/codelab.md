@@ -50,10 +50,11 @@ the raw trace to `trace.kev`.
 
 ## 4. Convert the trace (3 minutes)
 
-The analyzer reads the internal text format (`docs/trace-format.md`). Export
-the raw trace to text and map it with the tracelogger adapter.
+Decode the raw trace on the host with the SDP's `traceprinter`. The analyzer
+reads its text output directly and maps it to the internal format
+(`docs/trace-format.md`):
 
-    [REAL OUTPUT: adapter command, PLAN.md F20]
+    traceprinter -f trace.kev > trace.txt
 
 ## 5. Ask why (3 minutes)
 
