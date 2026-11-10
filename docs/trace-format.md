@@ -4,7 +4,22 @@ This is the project's own text format, not a QNX file format. The analyzer only
 reads this format. Real `tracelogger` output is mapped onto it by an adapter
 (see PLAN.md F20).
 
-TODO(human): confirm how real tracelogger events map onto these fields.
+## From a real QNX trace
+
+`blackbox/adapters/tracelogger.py` converts `traceprinter` text from a
+wide-mode capture (`tracelogger -w`; fast mode has no priorities):
+
+    python -m blackbox.adapters.tracelogger trace.txt > internal.txt
+
+- `ts_ns`: from the 64-bit cycle count (`CONTROL TIME` msb plus `t:` lsb)
+  and `TRACE_CYCLES_PER_SEC`, relative to the first event.
+- `tid`: `pid * 1000 + tid`, since QNX thread ids are per process.
+- `name`: `PROCTHREAD_NAME`, else `<process>.<tid>`.
+- `THRUNNING` becomes `RUN`; every other `TH<STATE>` becomes
+  `THREAD_STATE state=<STATE>`.
+- `SND_MESSAGE`/`REC_MESSAGE` pairs (matched by `rcvid`) become `MSG_SEND` and
+  `MSG_RECEIVE`; `REPLY_MESSAGE` becomes `MSG_REPLY`. The acting thread is the
+  one running on that CPU.
 
 ## Lines
 
