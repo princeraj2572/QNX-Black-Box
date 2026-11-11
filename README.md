@@ -68,6 +68,14 @@ run on the target and connects to nothing:
 Fault types: `kill_process`, `cpu_hog`, `delay_thread`, `memory_pressure`
 (parameters in `blackbox/chaos/scenarios.py`).
 
+Measure how long a killed service was gone before something (for example the
+QNX High Availability Manager) restarted it. A restart is a thread name that
+reappears under a new tid after its old one went quiet:
+
+    python3 -m blackbox recovery trace.txt
+
+See `target/README.md` for the HAM demo.
+
 The report format is in `docs/report-format.md`. A guided walkthrough is in
 `docs/codelab.md`.
 

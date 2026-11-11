@@ -10,6 +10,7 @@ from .config import ConfigError, load_config
 from .dashboard import render_html
 from .explain import explain
 from .parser import ParseError, parse_file
+from .recovery import find_restarts
 from .record import DEFAULT_REMOTE_PATH, decode, record
 from .report import build_report, report_json
 from .runner import RunnerError, SSHRunner
@@ -52,6 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--remote-path", default=DEFAULT_REMOTE_PATH,
                    help="trace file path on the target")
     r.add_argument("--decode", action="store_true", help=DECODE_HELP)
+    v = sub.add_parser("recovery", help="measure how long restarted threads were gone")
+    v.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
     h = sub.add_parser("report-html", help="render a JSON report as a self-contained HTML page")
     h.add_argument("report", help="report JSON written by `analyze --json`")
     h.add_argument("out", help="HTML file to write")
@@ -91,6 +94,21 @@ def cmd_analyze(args) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return EXIT_ERROR
     return EXIT_MISSES if result.misses else EXIT_OK
+
+
+def cmd_recovery(args) -> int:
+    try:
+        events = parse_file(args.trace)
+    except (OSError, ParseError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    restarts = find_restarts(events)
+    for r in restarts:
+        print(f"{r.name} gone at {r.down_ns / 1e6:.3f} ms, back at {r.up_ns / 1e6:.3f} ms: "
+              f"recovered in {r.recovery_ns / 1e6:.3f} ms (tid {r.old_tid} -> {r.new_tid})")
+    if not restarts:
+        print("No restarted threads found.")
+    return EXIT_OK
 
 
 def cmd_record(args, runner_factory) -> int:
@@ -174,6 +192,8 @@ def main(argv=None, runner_factory=SSHRunner) -> int:
         return cmd_chaos_run(args, runner_factory)
     if args.command == "report-html":
         return cmd_report_html(args)
+    if args.command == "recovery":
+        return cmd_recovery(args)
     if args.command == "serve":
         return cmd_serve(args)
     return cmd_analyze(args)

@@ -32,6 +32,26 @@ Record a trace while it runs:
 
     python3 -m blackbox record --target root@<ip> --seconds 10
 
+## HAM recovery demo
+
+`ham_demo.c` has the High Availability Manager (`ham`, in SDP 8.0) start a
+10 ms periodic `worker` and restart it whenever it dies. Build it like the
+other demo, adding the HAM library:
+
+    qcc -Vgcc_ntox86_64 -Wall -o ham_demo ham_demo.c -lham
+
+On the target, as root:
+
+    ham                                  # start the HAM (stop: hamctrl -stop)
+    ./ham_demo register /tmp/ham_demo    # full path; ham runs it as "worker"
+
+Then, on the host, kill the worker while recording and measure the gap:
+
+    python3 -m blackbox chaos run target/ham_kill.json --target root@<ip> --seconds 5 --decode
+    python3 -m blackbox recovery trace.txt
+
+TODO(human): not built or run yet; no measured recovery time so far.
+
 ## What a real run shows
 
 - Misses start after a quiet 2 s, once `low` starts waking `med` while it

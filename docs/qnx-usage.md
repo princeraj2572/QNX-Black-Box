@@ -22,6 +22,9 @@ fixtures and a mock runner.
 | Thread priorities and scheduling | `blackbox/causes.py` | `find_starvation` | Finds higher-priority threads that ran while a missed job was in flight. |
 | slay, on and sleep utilities | `blackbox/chaos/scenarios.py` | `FAULTS`, `parse_scenario` | Renders fault scenarios into target shell commands (kill, CPU hog, pause a process). |
 | POSIX shared memory under /dev/shmem | `blackbox/chaos/scenarios.py` | `FAULTS` | The memory pressure fault fills a file in /dev/shmem. |
+| High Availability Manager (ham) | `target/ham_demo.c` | | Has ham start a periodic worker and restart it on death (`ham_attach`, `CONDDEATH`, `ham_action_restart`). |
+| High Availability Manager (ham) | `target/ham_kill.json` | | Chaos scenario that kills the worker with slay. |
+| High Availability Manager (ham) | `blackbox/recovery.py` | `find_restarts` | Measures the gap between the killed thread's last event and its restarted copy's first event. |
 | SSH access to the target | `blackbox/runner.py` | `SSHRunner`, `MockRunner` | Runs commands and fetches files; the mock runner is used by all tests. |
 
 ## Not used yet
@@ -31,6 +34,17 @@ fixtures and a mock runner.
   add this.
 - slog2: no code reads it yet. Planned use is correlating log messages with a
   missed deadline. TODO(human): decide whether to add this.
+
+## High Availability Manager
+
+Available in SDP 8.0: the 8.0 docs include the `ham` and `hamctrl` utilities
+and the HAM API (`<ha/ham.h>`, `libham`). See the Utilities Reference entry for
+ham and the High Availability Framework Developer's Guide at qnx.com.
+
+- TODO(human): build and run `target/ham_demo.c`, kill the worker with
+  `target/ham_kill.json`, and record the measured recovery time here.
+- TODO(human): check whether `ham` is in the default QEMU image or has to be
+  copied to the target.
 
 ## To verify on a real target
 
