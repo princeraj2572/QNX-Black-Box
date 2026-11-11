@@ -56,16 +56,14 @@ def explain_miss(job, a: Analysis, config: Dict[str, ThreadConfig]) -> List[str]
             )
     for w in a.mutex_waits:
         if w.job == job:
-            line = (f"  - Mutex wait: {w.name} (priority {w.prio}) waited "
+            line = (f"  - Mutex wait: {w.name} (priority {w.prio}) blocked "
                     f"{ms(w.end_ns - w.start_ns)} on a mutex from {ms(w.start_ns)}.")
             if w.ran:
-                line += " Meanwhile " + " and ".join(
+                line += " In that time " + ", ".join(
                     f"{n} (priority {p}) ran {ms(t)}" for n, p, t in w.ran) + "."
             if len({p for _, p, _ in w.ran}) > 1:
-                low, high = min(w.ran, key=lambda r: r[1]), max(w.ran, key=lambda r: r[1])
-                line += (f" Likely priority inversion: if {low[0]} holds the mutex, {high[0]} "
-                         f"preempted it while {w.name} waited. A mutex with priority "
-                         f"inheritance (PTHREAD_PRIO_INHERIT) prevents this.")
+                low = min(w.ran, key=lambda r: r[1])[0]
+                line += f" Priority inversion if {low} holds the mutex."
             lines.append(line)
     if len(lines) == 1:
         lines.append("  - No cause was identified from the trace.")
@@ -84,10 +82,9 @@ def causes_of(job, a: Analysis) -> List[str]:
             if len({p for _, p, _ in w.ran}) > 1:
                 low = min(w.ran, key=lambda r: r[1])[0]
                 high = max(w.ran, key=lambda r: r[1])[0]
-                found.append(f"{w.name} waited on a mutex while {high} preempted {low} "
-                             f"(likely priority inversion)")
+                found.append(f"{w.name} blocked on a mutex while {high} preempted {low}")
             else:
-                found.append(f"{w.name} waited on a mutex")
+                found.append(f"{w.name} blocked on a mutex")
     found += [f"CPU starvation by {s.hog_name}" for s in a.starvation if s.job == job]
     return list(dict.fromkeys(found))
 
@@ -112,10 +109,16 @@ def summary(a: Analysis) -> List[str]:
     n = len(a.misses)
     for c, k in sorted(counts.items(), key=lambda kv: -kv[1]):  # stable: keeps causal order
         out.append(f"  - Cause in {k} of {n}: {c}.")
-    if any(len({p for _, p, _ in w.ran}) > 1 for w in a.mutex_waits):
-        out.append("  - Suggested fix: create the mutex with priority inheritance "
-                   "(pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT)).")
+    if mutex_inversion(a):
+        out.append("  - " + FIX)
     return out + [""]
+
+
+FIX = "Fix: set PTHREAD_PRIO_INHERIT on the mutex with pthread_mutexattr_setprotocol()."
+
+
+def mutex_inversion(a: Analysis) -> bool:
+    return any(len({p for _, p, _ in w.ran}) > 1 for w in a.mutex_waits)
 
 
 def explain(a: Analysis, config: Dict[str, ThreadConfig]) -> str:
@@ -127,4 +130,6 @@ def explain(a: Analysis, config: Dict[str, ThreadConfig]) -> str:
     for job in a.misses:
         out += explain_miss(job, a, config)
         out.append("")
+    if len(a.misses) == 1 and mutex_inversion(a):
+        out += [FIX, ""]
     return "\n".join(out)

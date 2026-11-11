@@ -82,7 +82,7 @@ class RealDashboardTest(unittest.TestCase):
         page = render_html(build_report(events, analyze(events, config), config))
         static = page.split('<script id="data"')[0]
         self.assertIn("controller missed its 20 ms deadline 10 times.", static)
-        self.assertIn('10/10</span> server waited on a mutex while med preempted low', static)
+        self.assertIn('10/10</span> server blocked on a mutex while med preempted low', static)
         self.assertIn("PTHREAD_PRIO_INHERIT", static)
         self.assertEqual(static.count('class="row"'), 10)
         self.assertEqual(static.count('<article class="miss"'), 10)

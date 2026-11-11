@@ -42,10 +42,10 @@ def _cause_label(c: dict) -> str:
         if len({r["priority"] for r in ran}) > 1:
             low = min(ran, key=lambda r: r["priority"])["thread"]
             high = max(ran, key=lambda r: r["priority"])["thread"]
-            return f"{c['thread']} waited on a mutex while {high} preempted {low}"
-        return f"{c['thread']} waited on a mutex"
+            return f"{c['thread']} blocked on a mutex while {high} preempted {low}"
+        return f"{c['thread']} blocked on a mutex"
     if t == "cpu_starvation":
-        return f"{c['thread']} (priority {c['priority']}) took the CPU"
+        return f"CPU starvation by {c['thread']} (priority {c['priority']})"
     return str(t)
 
 
@@ -57,8 +57,7 @@ def _mutex_inversion(report: dict) -> bool:
 def _summary_html(report: dict) -> str:
     misses = report["misses"]
     if not misses:
-        return ('<h1>No deadline misses found.</h1>'
-                '<p class="lede">Every job in this trace finished before its deadline.</p>')
+        return '<h1>No deadline misses found.</h1>'
     names = list(dict.fromkeys(m["thread"] for m in misses))
     deadlines = {t["name"]: t.get("deadline_ms") for t in report["threads"]}
     if len(names) == 1:
@@ -73,7 +72,7 @@ def _summary_html(report: dict) -> str:
     if late:
         stats.append(f"Worst {_ms(max(late))} late, average {_ms(sum(late) // len(late))} late.")
     if len(late) < len(misses):
-        stats.append(f"{len(misses) - len(late)} still unfinished when the trace ended.")
+        stats.append(f"{len(misses) - len(late)} unfinished at trace end.")
     counts: dict = {}
     for m in misses:
         for label in dict.fromkeys(_cause_label(c) for c in m["causes"]):
@@ -83,11 +82,10 @@ def _summary_html(report: dict) -> str:
         for label, k in sorted(counts.items(), key=lambda kv: -kv[1]))
     out = [f"<h1>{escape(head)}</h1>", f'<p class="lede">{escape(" ".join(stats))}</p>']
     if rows:
-        out.append(f'<ul class="causes" aria-label="Causes, by how many misses they explain">{rows}</ul>')
+        out.append(f'<ul class="causes" aria-label="Causes">{rows}</ul>')
     if _mutex_inversion(report):
-        out.append('<p class="fix"><strong>Suggested fix:</strong> create the mutex with priority '
-                   'inheritance, <code>pthread_mutexattr_setprotocol(&amp;attr, '
-                   'PTHREAD_PRIO_INHERIT)</code>, so the holder runs at the waiter\'s priority.</p>')
+        out.append('<p class="fix"><strong>Fix:</strong> set <code>PTHREAD_PRIO_INHERIT</code> on the '
+                   'mutex with <code>pthread_mutexattr_setprotocol()</code>.</p>')
     return "".join(out)
 
 
@@ -221,9 +219,9 @@ h4 { font-family:var(--cond); font-size:1.05rem; font-weight:600; margin:1.2rem 
 <main>
 <p class="brand">QNX Black Box report</p>
 __SUMMARY__
-<h2>Misses across the trace</h2>
-<svg id="overview" viewBox="0 0 1000 70" role="img" aria-label="Each mark is one missed deadline; taller marks were later"></svg>
-<h2>Each miss up close</h2>
+<h2>Misses over time</h2>
+<svg id="overview" viewBox="0 0 1000 70" role="img" aria-label="Missed deadlines over time; bar height is lateness"></svg>
+<h2>Miss detail</h2>
 <div class="grid">
 <nav aria-label="Missed deadlines">__LIST__</nav>
 <section class="detail" aria-live="polite">
@@ -232,23 +230,22 @@ __SUMMARY__
 <div class="scroll"><svg id="timeline" viewBox="0 0 1000 200" role="img" aria-label="Close-up timeline of the selected miss"></svg></div>
 <p class="legend" id="legend"></p>
 <div id="misses">__MISSES__</div>
-<h4 class="steps-head" hidden>Step by step</h4>
+<h4 class="steps-head" hidden>Events</h4>
 <div class="tablewrap"><table id="steps" class="tbl" hidden>
-<thead><tr><th class="r">After release</th><th>Thread</th><th>What happened</th></tr></thead><tbody></tbody></table></div>
+<thead><tr><th class="r">Since release</th><th>Thread</th><th>Event</th></tr></thead><tbody></tbody></table></div>
 </section>
 </div>
 <section id="jobs-sec" hidden>
-<h2>Watched threads</h2>
-<p class="note">Every job of each thread in the config, released and finished inside the trace.</p>
+<h2>Response times</h2>
 <div class="tablewrap"><table id="jobs" class="tbl">
 <thead><tr><th>Thread</th><th class="r">Priority</th><th class="r">Deadline</th><th class="r">Jobs</th><th class="r">Missed</th>
 <th class="r">Best</th><th class="r">Average</th><th class="r">Worst</th></tr></thead><tbody></tbody></table></div>
 </section>
 <section id="cpu-sec" hidden>
-<h2>Where the CPU time went</h2>
+<h2>CPU time</h2>
 <p class="note" id="cpu-note"></p>
 <div class="tablewrap"><table id="cpu" class="tbl">
-<thead><tr><th>Thread</th><th class="r">Priority</th><th class="r">CPU time</th><th class="r">Share</th><th class="barcol"></th></tr></thead><tbody></tbody></table></div>
+<thead><tr><th>Thread</th><th class="r">Max priority</th><th class="r">CPU time</th><th class="r">Share</th><th class="barcol"></th></tr></thead><tbody></tbody></table></div>
 </section>
 </main>
 <script id="data" type="application/json">__DATA__</script>
@@ -272,19 +269,14 @@ __SUMMARY__
 
   var tidName = {};
   d.timeline.forEach(function (e) { tidName[e.tid] = e.name; });
-  var STATES = { RELEASED: "job released", DONE: "job finished", MUTEX: "blocks on a mutex",
-    REPLY: "blocks until the reply comes back", SEND: "blocks until the message is received",
-    RECEIVE: "waits for the next message", READY: "is ready to run but not running",
-    SEM: "blocks on a semaphore", CONDVAR: "waits on a condition variable",
-    NANOSLEEP: "sleeps", INTR: "waits for an interrupt", JOIN: "waits for a thread to exit",
-    WAITPAGE: "waits for a page fault", STOPPED: "is stopped", DEAD: "exits" };
+  var STATES = { RELEASED: "job released", DONE: "job done" };
   function say(e) {
     var peer = e.peer == null ? "" : (tidName[e.peer] || ("thread " + e.peer));
-    if (e.event === "RUN") return "starts running on CPU " + (e.cpu || 0) + " at priority " + e.prio;
-    if (e.event === "MSG_SEND") return "sends a message to " + peer;
-    if (e.event === "MSG_RECEIVE") return "receives the message from " + peer + " and runs at priority " + e.prio;
-    if (e.event === "MSG_REPLY") return "replies to " + peer;
-    if (e.event === "THREAD_STATE") return STATES[e.state] || ("enters state " + e.state);
+    if (e.event === "RUN") return "RUNNING on CPU " + (e.cpu || 0) + ", priority " + e.prio;
+    if (e.event === "MSG_SEND") return "MsgSend to " + peer;
+    if (e.event === "MSG_RECEIVE") return "MsgReceive from " + peer + ", priority " + e.prio;
+    if (e.event === "MSG_REPLY") return "MsgReply to " + peer;
+    if (e.event === "THREAD_STATE") return STATES[e.state] || e.state;
     return e.event;
   }
   function cell(tr, txt, cls) {
@@ -302,7 +294,7 @@ __SUMMARY__
     var marked = false, shown = 0;
     function deadlineRow() {
       var tr = document.createElement("tr"); tr.className = "mark";
-      cell(tr, "+" + ms(m.deadline_ns - m.release_ns), "r"); cell(tr, ""); cell(tr, "deadline passes");
+      cell(tr, "+" + ms(m.deadline_ns - m.release_ns), "r"); cell(tr, ""); cell(tr, "deadline");
       body.appendChild(tr); marked = true;
     }
     rows.forEach(function (e) {
@@ -318,7 +310,7 @@ __SUMMARY__
     if (!marked && stop > m.deadline_ns && shown < MAX_STEPS) deadlineRow();
     if (rows.length > shown) {
       var tr = document.createElement("tr");
-      cell(tr, ""); cell(tr, ""); cell(tr, (rows.length - shown) + " more events not shown");
+      cell(tr, ""); cell(tr, ""); cell(tr, (rows.length - shown) + " more events");
       body.appendChild(tr);
     }
     document.getElementById("steps").hidden = false;
@@ -360,9 +352,9 @@ __SUMMARY__
     if (!tot.length) return;
     tot.sort(function (a, b) { return b.ns - a.ns; });
     var ncpu = Object.keys(cpus).length, cap = END * ncpu, top = tot.slice(0, 12);
-    document.getElementById("cpu-note").textContent = "The " + top.length + " busiest of " + tot.length +
-      " threads over " + (END / 1e9).toFixed(2) + " s on " + ncpu + " CPU" + (ncpu > 1 ? "s" : "") +
-      ". Share is of all CPU time, so idle threads show what was left over. Priority is the highest seen.";
+    document.getElementById("cpu-note").textContent = "Top " + top.length + " of " + tot.length +
+      " threads, " + (END / 1e9).toFixed(2) + " s, " + ncpu + " CPU" + (ncpu > 1 ? "s" : "") +
+      ". Share is of total CPU time. Priority is the highest recorded.";
     var body = document.querySelector("#cpu tbody");
     top.forEach(function (t) {
       var tr = document.createElement("tr");
@@ -394,32 +386,32 @@ __SUMMARY__
     function add(name, role, word) {
       if (!name || seen[name]) return; seen[name] = 1; roles.push({ name: name, role: role, word: word });
     }
-    add(m.thread, "victim", "missed its deadline");
+    add(m.thread, "victim", "missed deadline");
     m.causes.forEach(function (c) {
-      if (c.type === "slow_reply") add(c.from, "waiter", "slow to reply");
+      if (c.type === "slow_reply") add(c.from, "waiter", "late reply");
       if (c.type === "mutex_wait") {
-        add(c.thread, "waiter", "waiting on a mutex");
+        add(c.thread, "waiter", "blocked on mutex");
         var ran = c.ran.slice().sort(function (a, b) { return b.priority - a.priority; });
         var inv = ran.length > 1 && ran[0].priority !== ran[ran.length - 1].priority;
         ran.forEach(function (r, i) {
-          if (inv && i === 0) add(r.thread, "culprit", "preempted the holder");
-          else if (inv && i === ran.length - 1) add(r.thread, "holder", "likely holds the mutex");
-          else add(r.thread, "other", "ran meanwhile");
+          if (inv && i === 0) add(r.thread, "culprit", "preempted " + ran[ran.length - 1].thread);
+          else if (inv && i === ran.length - 1) add(r.thread, "holder", "probable mutex owner");
+          else add(r.thread, "other", "also ran");
         });
       }
       if (c.type === "priority_inversion") {
-        add(c.blocked_on, "holder", "held up " + c.blocked);
-        add(c.medium, "culprit", "ran instead");
+        add(c.blocked_on, "holder", "blocking " + c.blocked);
+        add(c.medium, "culprit", "preempted " + c.blocked_on);
       }
-      if (c.type === "cpu_starvation") add(c.thread, "culprit", "took the CPU");
+      if (c.type === "cpu_starvation") add(c.thread, "culprit", "higher priority");
     });
     return roles;
   }
   function waits(m) {
     var w = [];
     m.causes.forEach(function (c) {
-      if (c.type === "slow_reply") w.push({ name: m.thread, start: c.send_ns, end: c.send_ns + c.duration_ns, what: "waiting for reply" });
-      if (c.type === "mutex_wait") w.push({ name: c.thread, start: c.start_ns, end: c.end_ns, what: "waiting on mutex" });
+      if (c.type === "slow_reply") w.push({ name: m.thread, start: c.send_ns, end: c.send_ns + c.duration_ns, what: "reply-blocked" });
+      if (c.type === "mutex_wait") w.push({ name: c.thread, start: c.start_ns, end: c.end_ns, what: "mutex-blocked" });
     });
     return w;
   }
@@ -474,8 +466,8 @@ __SUMMARY__
       text(svg, "+" + ms(m.late_ns) + " late", x(m.deadline_ns) + 4, TOP - 14, {});
 
     var lg = document.getElementById("legend"); lg.textContent = "";
-    [["victim", "missed the deadline"], ["waiter", "waiting"], ["culprit", "ran ahead of it"],
-     ["holder", "likely lock holder"]].forEach(function (p) {
+    [["victim", "missed deadline"], ["waiter", "blocked thread"], ["culprit", "preempting thread"],
+     ["holder", "probable owner"]].forEach(function (p) {
       if (!roles.some(function (r) { return r.role === p[0]; })) return;
       var sp = document.createElement("span"), sw = document.createElement("i");
       sw.style.background = "var(--" + p[0] + ")"; sp.appendChild(sw);

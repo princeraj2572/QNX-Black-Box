@@ -58,7 +58,7 @@ class RealDemoTest(unittest.TestCase):
         self.assertIn("controller: 10 misses", head)
         self.assertIn("Cause in 10 of 10: slow reply from server", head)
         self.assertIn("med preempted low", head)
-        self.assertEqual(head.count("Suggested fix"), 1)
+        self.assertEqual(text.count("PTHREAD_PRIO_INHERIT"), 1)
 
 
 if __name__ == "__main__":
