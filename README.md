@@ -88,7 +88,9 @@ reappears under a new tid after its old one went quiet:
 Without `--name`, thread pools and SSH sessions also show up, since their
 threads reuse names.
 
-See `target/README.md` for the HAM demo.
+The 94 to 99 ms measured so far is for a shell loop that restarts the service.
+A HAM demo is in `target/` but has not been built or run yet (see
+`target/README.md`).
 
 Optional AI step: ask a language model for a code fix. The analysis above is
 deterministic and needs no AI; this step takes its findings (thread config,
@@ -131,7 +133,7 @@ The report format is in `docs/report-format.md`. A guided walkthrough is in
 | Item      | Value |
 |-----------|-------|
 | QNX       | QNX Software Development Platform (SDP) 8.0 |
-| Target    | QEMU virtual machine or Raspberry Pi 5 |
+| Target    | x86_64 QEMU virtual machine (verified). Raspberry Pi 5 is untested |
 | Toolchain | `qcc` from SDP 8.0 builds the C demo services in `target/` |
 | Host      | any OS with Python 3 and an `ssh`/`scp` client |
 
@@ -139,8 +141,8 @@ Status: verified on SDP 8.0 with an x86_64 QEMU target. The priority
 inversion demo in `target/` was built with `qcc`, traced with `tracelogger -w`,
 and its captures are analyzed in the tests (`tests/fixtures/real/`). `record`, the
 `kill_process` fault and `recovery` were also run there: a killed service's
-threads came back in 94 to 99 ms. Not yet verified: Raspberry Pi 5, the other
-chaos faults, and the HAM demo;
+threads came back in 94 to 99 ms. Not yet verified: Raspberry Pi 5, the three
+experimental chaos faults, the HAM demo, and `suggest` against the live API;
 these are marked `TODO(human)` in the code and docs.
 
 ## License

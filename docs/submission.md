@@ -5,7 +5,7 @@ QNX Global Hackathon 2026. Deadline: 15 December 2026, 2:00 PM Eastern
 
 | Item | Status | Where |
 |---|---|---|
-| Public repo | TODO(human): make the GitHub repo public | https://github.com/princeraj2572/QNX-Black-Box |
+| Public repo | Done: the repo is public | https://github.com/princeraj2572/QNX-Black-Box |
 | Open-source license, detectable | Done: MIT, in `LICENSE` at the root | `LICENSE` |
 | Build and run instructions naming QNX version, target and toolchain | Done | README "Install", "Usage", "QNX version, target and toolchain"; `target/README.md` |
 | Written description | Draft below; paste into Devpost | this file |
@@ -61,10 +61,15 @@ rediscovered in the field.
   priority inversion, CPU starvation by a higher-priority thread, or a slow
   reply to a QNX message. It follows send/receive/reply chains, so a miss in a
   client is traced back to the server that held it up.
-- **Injects faults** while recording: kill a process, CPU hog, pause a
-  process, memory pressure in `/dev/shmem`.
-- **Measures recovery**: how long a killed service was gone before something
-  (such as the High Availability Manager) restarted it.
+- **Injects faults** while recording. Killing a process is verified on the
+  target; CPU hog, pausing a process and memory pressure in `/dev/shmem` are
+  experimental and the tool says so when a scenario uses them.
+- **Measures recovery**: how long a killed service was gone before its
+  supervisor restarted it.
+- **Suggests a fix with AI (optional)**: `suggest` sends the findings, and the
+  source file if you give one, to a language model and prints a proposed patch.
+  The analysis itself uses no AI, so the model cannot change what was measured;
+  a second trace confirms or rejects its suggestion.
 - **Writes a report**: JSON, plus a self-contained HTML page with a close-up
   of each miss, step-by-step events, per-thread jobs and CPU time. `serve`
   shows it live in the browser.
@@ -78,7 +83,7 @@ chains, inversion, starvation and slow replies run over that format, and an
 explainer turns their findings into sentences. Target programs mark job
 boundaries with `trace_logf()` user events. The demo services in `target/`
 are C, built with `qcc` from SDP 8.0 and run on an x86_64 QEMU target. The
-tool has 126 unit tests, including tests on real captures from QEMU.
+tool has 143 unit tests, including tests on real captures from QEMU.
 
 #### Challenges we ran into
 
@@ -103,7 +108,8 @@ wait while the medium-priority thread ran. Switch the mutex to
 
 We also killed the running demo on the QNX target with `blackbox chaos run`
 while recording, and `blackbox recovery` measured its four threads coming
-back in a new process 94 to 99 ms later.
+back in a new process 94 to 99 ms later. A shell loop did the restarting in
+that run, not the High Availability Manager.
 
 #### What we learned
 
@@ -112,15 +118,18 @@ interact; what the instrumented kernel records and what it cannot see.]
 
 #### What's next
 
-- Run the High Availability Manager demo and publish measured recovery times
-  (the code is in `target/ham_demo.c`; HAM was not in our SDP install).
+- Build and run the High Availability Manager demo and publish measured
+  recovery times. The code is in `target/ham_demo.c` but has never been
+  compiled, because HAM was not in our SDP install.
+- Verify the three experimental chaos faults on the target.
+- Run `suggest` against the live model API and record the result.
 - Raspberry Pi 5 support.
 - Generate the thread config from `pidin`, and correlate misses with `slog2`
   logs.
 
 ### Built with
 
-python, c, qnx, qnx-sdp-8.0, qcc, tracelogger, qemu, html, javascript
+python, c, qnx, qnx-sdp-8.0, qcc, tracelogger, qemu, html, javascript, gemini
 
 ### Try it out links
 
