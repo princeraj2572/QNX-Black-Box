@@ -28,6 +28,8 @@ class DashboardTest(unittest.TestCase):
         page = render_html(make_report())
         self.assertTrue(page.startswith("<!doctype html>"))
         self.assertIn('<svg id="timeline"', page)
+        for table in ('id="steps"', 'id="jobs"', 'id="cpu"'):
+            self.assertIn(table, page)
         self.assertIn('<script id="data" type="application/json">', page)
         self.assertIn("Priority inversion", page)  # static explanation text
         self.assertIn("high missed its 5.0 ms deadline", page)

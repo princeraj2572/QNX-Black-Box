@@ -199,6 +199,20 @@ svg .ov-base { stroke:var(--rule); }
 .pager button:disabled { opacity:.4; cursor:default; }
 .pager button:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
 #pos { color:var(--muted); }
+h4 { font-family:var(--cond); font-size:1.05rem; font-weight:600; margin:1.2rem 0 .4rem; }
+.note { color:var(--muted); margin:0 0 .6rem; max-width:70ch; }
+.tablewrap { overflow-x:auto; }
+.tbl { border-collapse:collapse; width:100%; font-size:.92rem; font-variant-numeric:tabular-nums; }
+.tbl th { text-align:left; font-weight:600; color:var(--muted); font-size:.85rem;
+          border-bottom:1px solid var(--rule); padding:6px 10px 6px 0; }
+.tbl td { border-bottom:1px solid var(--rule); padding:5px 10px 5px 0; vertical-align:top; }
+.tbl .r { text-align:right; white-space:nowrap; }
+.tbl .who { white-space:nowrap; }
+.tbl .who i { display:inline-block; width:8px; height:8px; margin-right:7px; }
+.tbl tr.mark td { font-weight:600; background:color-mix(in srgb, var(--late) 18%, transparent); }
+.tbl .bad { color:var(--culprit); font-weight:600; }
+.barcol { width:34%; }
+.cpubar { height:8px; background:var(--other); }
 .legend { display:flex; flex-wrap:wrap; gap:4px 18px; font-size:.85rem; color:var(--muted); margin:0; }
 .legend i { display:inline-block; width:12px; height:8px; margin-right:6px; vertical-align:middle; }
 </style>
@@ -218,8 +232,24 @@ __SUMMARY__
 <div class="scroll"><svg id="timeline" viewBox="0 0 1000 200" role="img" aria-label="Close-up timeline of the selected miss"></svg></div>
 <p class="legend" id="legend"></p>
 <div id="misses">__MISSES__</div>
+<h4 class="steps-head" hidden>Step by step</h4>
+<div class="tablewrap"><table id="steps" class="tbl" hidden>
+<thead><tr><th class="r">After release</th><th>Thread</th><th>What happened</th></tr></thead><tbody></tbody></table></div>
 </section>
 </div>
+<section id="jobs-sec" hidden>
+<h2>Watched threads</h2>
+<p class="note">Every job of each thread in the config, released and finished inside the trace.</p>
+<div class="tablewrap"><table id="jobs" class="tbl">
+<thead><tr><th>Thread</th><th class="r">Priority</th><th class="r">Deadline</th><th class="r">Jobs</th><th class="r">Missed</th>
+<th class="r">Best</th><th class="r">Average</th><th class="r">Worst</th></tr></thead><tbody></tbody></table></div>
+</section>
+<section id="cpu-sec" hidden>
+<h2>Where the CPU time went</h2>
+<p class="note" id="cpu-note"></p>
+<div class="tablewrap"><table id="cpu" class="tbl">
+<thead><tr><th>Thread</th><th class="r">Priority</th><th class="r">CPU time</th><th class="r">Share</th><th class="barcol"></th></tr></thead><tbody></tbody></table></div>
+</section>
 </main>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -239,6 +269,111 @@ __SUMMARY__
     open[c] = iv;
     (runs[e.name] = runs[e.name] || []).push(iv);
   });
+
+  var tidName = {};
+  d.timeline.forEach(function (e) { tidName[e.tid] = e.name; });
+  var STATES = { RELEASED: "job released", DONE: "job finished", MUTEX: "blocks on a mutex",
+    REPLY: "blocks until the reply comes back", SEND: "blocks until the message is received",
+    RECEIVE: "waits for the next message", READY: "is ready to run but not running",
+    SEM: "blocks on a semaphore", CONDVAR: "waits on a condition variable",
+    NANOSLEEP: "sleeps", INTR: "waits for an interrupt", JOIN: "waits for a thread to exit",
+    WAITPAGE: "waits for a page fault", STOPPED: "is stopped", DEAD: "exits" };
+  function say(e) {
+    var peer = e.peer == null ? "" : (tidName[e.peer] || ("thread " + e.peer));
+    if (e.event === "RUN") return "starts running on CPU " + (e.cpu || 0) + " at priority " + e.prio;
+    if (e.event === "MSG_SEND") return "sends a message to " + peer;
+    if (e.event === "MSG_RECEIVE") return "receives the message from " + peer + " and runs at priority " + e.prio;
+    if (e.event === "MSG_REPLY") return "replies to " + peer;
+    if (e.event === "THREAD_STATE") return STATES[e.state] || ("enters state " + e.state);
+    return e.event;
+  }
+  function cell(tr, txt, cls) {
+    var td = document.createElement("td"); td.textContent = txt; if (cls) td.className = cls;
+    tr.appendChild(td); return td;
+  }
+  var MAX_STEPS = 80;
+  function drawSteps(m, roles) {
+    var role = {}; roles.forEach(function (r) { role[r.name] = r.role; });
+    var stop = m.done_ns === null ? d.trace_end_ns : m.done_ns;
+    var rows = d.timeline.filter(function (e) {
+      return role[e.name] && e.ts_ns >= m.release_ns && e.ts_ns <= stop;
+    });
+    var body = document.querySelector("#steps tbody"); body.textContent = "";
+    var marked = false, shown = 0;
+    function deadlineRow() {
+      var tr = document.createElement("tr"); tr.className = "mark";
+      cell(tr, "+" + ms(m.deadline_ns - m.release_ns), "r"); cell(tr, ""); cell(tr, "deadline passes");
+      body.appendChild(tr); marked = true;
+    }
+    rows.forEach(function (e) {
+      if (shown >= MAX_STEPS) return;
+      if (!marked && e.ts_ns > m.deadline_ns) deadlineRow();
+      var tr = document.createElement("tr");
+      cell(tr, "+" + ms(e.ts_ns - m.release_ns), "r");
+      var who = cell(tr, "", "who"), sw = document.createElement("i");
+      sw.style.background = "var(--" + role[e.name] + ")"; who.appendChild(sw);
+      who.appendChild(document.createTextNode(e.name));
+      cell(tr, say(e)); body.appendChild(tr); shown++;
+    });
+    if (!marked && stop > m.deadline_ns && shown < MAX_STEPS) deadlineRow();
+    if (rows.length > shown) {
+      var tr = document.createElement("tr");
+      cell(tr, ""); cell(tr, ""); cell(tr, (rows.length - shown) + " more events not shown");
+      body.appendChild(tr);
+    }
+    document.getElementById("steps").hidden = false;
+    document.querySelector(".steps-head").hidden = false;
+  }
+
+  function drawJobs() {
+    var body = document.querySelector("#jobs tbody"), any = false, missed = {};
+    d.misses.forEach(function (m) { missed[m.thread] = (missed[m.thread] || 0) + 1; });
+    d.threads.forEach(function (t) {
+      var open = {}, resp = [];
+      d.timeline.forEach(function (e) {
+        if (e.name !== t.name || e.event !== "THREAD_STATE") return;
+        if (e.state === "RELEASED") open[e.tid] = e.ts_ns;
+        else if (e.state === "DONE" && open[e.tid] != null) { resp.push(e.ts_ns - open[e.tid]); delete open[e.tid]; }
+      });
+      var tr = document.createElement("tr");
+      cell(tr, t.name); cell(tr, t.priority, "r"); cell(tr, t.deadline_ms + " ms", "r");
+      cell(tr, resp.length, "r");
+      cell(tr, missed[t.name] || 0, "r" + (missed[t.name] ? " bad" : ""));
+      if (resp.length) {
+        var worst = Math.max.apply(null, resp);
+        cell(tr, ms(Math.min.apply(null, resp)), "r");
+        cell(tr, ms(resp.reduce(function (a, b) { return a + b; }, 0) / resp.length), "r");
+        cell(tr, ms(worst), "r" + (worst > t.deadline_ms * 1e6 ? " bad" : ""));
+      } else { cell(tr, "-", "r"); cell(tr, "-", "r"); cell(tr, "-", "r"); }
+      body.appendChild(tr); any = true;
+    });
+    document.getElementById("jobs-sec").hidden = !any;
+  }
+
+  function drawCpu() {
+    var cpus = {}, tot = [];
+    Object.keys(runs).forEach(function (n) {
+      var sum = 0, prio = 0;
+      runs[n].forEach(function (iv) { sum += iv.end - iv.start; cpus[iv.cpu] = 1; prio = Math.max(prio, iv.prio); });
+      tot.push({ name: n, ns: sum, prio: prio });
+    });
+    if (!tot.length) return;
+    tot.sort(function (a, b) { return b.ns - a.ns; });
+    var ncpu = Object.keys(cpus).length, cap = END * ncpu, top = tot.slice(0, 12);
+    document.getElementById("cpu-note").textContent = "The " + top.length + " busiest of " + tot.length +
+      " threads over " + (END / 1e9).toFixed(2) + " s on " + ncpu + " CPU" + (ncpu > 1 ? "s" : "") +
+      ". Share is of all CPU time, so idle threads show what was left over. Priority is the highest seen.";
+    var body = document.querySelector("#cpu tbody");
+    top.forEach(function (t) {
+      var tr = document.createElement("tr");
+      cell(tr, t.name); cell(tr, t.prio, "r"); cell(tr, ms(t.ns), "r");
+      cell(tr, (100 * t.ns / cap).toFixed(1) + "%", "r");
+      var bar = document.createElement("div"); bar.className = "cpubar";
+      bar.style.width = (100 * t.ns / top[0].ns).toFixed(1) + "%";
+      cell(tr, "").appendChild(bar); body.appendChild(tr);
+    });
+    document.getElementById("cpu-sec").hidden = false;
+  }
 
   function el(svg, tag, attrs, title) {
     var n = document.createElementNS(NS, tag);
@@ -384,7 +519,7 @@ __SUMMARY__
     document.getElementById("pos").textContent = (i + 1) + " of " + d.misses.length;
     document.getElementById("prev").disabled = i === 0;
     document.getElementById("next").disabled = i === d.misses.length - 1;
-    drawDetail(m); drawOverview(i);
+    drawDetail(m); drawOverview(i); drawSteps(m, cast(m));
     if (location.hash !== "#miss-" + (i + 1)) history.replaceState(null, "", "#miss-" + (i + 1));
   }
   document.querySelectorAll(".row").forEach(function (r) {
@@ -399,6 +534,7 @@ __SUMMARY__
     if (ev.key === "ArrowRight" || ev.key === "j") { select(cur + 1); ev.preventDefault(); }
     if (ev.key === "ArrowLeft" || ev.key === "k") { select(cur - 1); ev.preventDefault(); }
   });
+  drawJobs(); drawCpu();
   var hm = /^#miss-(\\d+)$/.exec(location.hash);
   if (d.misses.length) select(hm ? +hm[1] - 1 : 0);
   else { document.querySelector(".grid").hidden = true; drawOverview(-1); }
