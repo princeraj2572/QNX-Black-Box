@@ -4,3 +4,5 @@ __pycache__/
 *.kev
 .claude/
 CLAUDE.md
+.playwright-mcp/
+demo_out/

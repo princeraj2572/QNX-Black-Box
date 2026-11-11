@@ -4,9 +4,9 @@ A guide for reviewers: each QNX feature the project relies on, and where to
 find it in the code. Anything not yet verified on a real QNX 8.0 system is
 marked `TODO(human)`.
 
-Honest status: no code here has run on a QNX target yet. The host-side tool
-works on the internal trace format (`docs/trace-format.md`) and is tested with
-fixtures and a mock runner.
+Status: the tracelogger adapter and the priority inversion demo are verified
+on SDP 8.0 with an x86_64 QEMU target (captures in `tests/fixtures/real/`).
+The chaos commands and the HAM demo have not run on a target yet.
 
 ## Feature map
 

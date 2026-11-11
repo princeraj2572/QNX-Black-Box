@@ -105,11 +105,11 @@ The report format is in `docs/report-format.md`. A guided walkthrough is in
 | Toolchain | `qcc` from SDP 8.0 builds the C demo services in `target/` |
 | Host      | any OS with Python 3 and an `ssh`/`scp` client |
 
-Status: the analyzer, chaos and record commands are written and tested against
-the internal trace format and a mock runner. They have not yet been run on a
-real QNX 8.0 system. Commands sent to the target and the mapping from real
-tracelogger output to the internal format are marked `TODO(human)` in the
-code and docs until someone verifies them on a real target.
+Status: verified on SDP 8.0 with an x86_64 QEMU target. The priority
+inversion demo in `target/` was built with `qcc`, traced with `tracelogger -w`,
+and its captures are analyzed in the tests (`tests/fixtures/real/`). Not yet
+verified: Raspberry Pi 5, the chaos fault commands, and the HAM recovery demo;
+these are marked `TODO(human)` in the code and docs.
 
 ## License
 
