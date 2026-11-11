@@ -10,9 +10,9 @@ Scenario JSON:
 Every fault renders to commands that return quickly (long-running work is
 backgrounded) so the runner can start the next fault right away.
 
-kill_process (slay -s KILL) is verified on QNX 8.0 QEMU. TODO(human): verify
-the others on a real target (slay -s STOP/CONT, on -p, $SECONDS in the target
-shell, /dev/shmem).
+kill_process (slay -s KILL) is verified on QNX 8.0 QEMU. The others are
+experimental (see VERIFIED). TODO(human): verify them on a real target
+(slay -s STOP/CONT, on -p, $SECONDS in the target shell, /dev/shmem).
 """
 
 import json
@@ -74,10 +74,19 @@ FAULTS = {
 }
 
 
+# Faults that have been run on a real QNX 8.0 target. The rest render commands that have only
+# been checked in dry runs, so the CLI warns before using them.
+VERIFIED = frozenset({"kill_process"})
+
+
 @dataclass(frozen=True)
 class Scenario:
     name: str
     faults: Tuple[dict, ...]
+
+    def experimental(self) -> List[str]:
+        """Fault types in this scenario that have not been verified on a target, in order, once each."""
+        return list(dict.fromkeys(f["type"] for f in self.faults if f["type"] not in VERIFIED))
 
     def commands(self) -> List[str]:
         out: List[str] = []

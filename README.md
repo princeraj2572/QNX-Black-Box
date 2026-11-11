@@ -72,8 +72,12 @@ run on the target and connects to nothing:
     python3 -m blackbox chaos run tests/fixtures/scenario_chaos.json --dry-run
     python3 -m blackbox chaos run scenario.json --target root@192.168.1.50 --seconds 10
 
-Fault types: `kill_process`, `cpu_hog`, `delay_thread`, `memory_pressure`
-(parameters in `blackbox/chaos/scenarios.py`).
+Fault types (parameters in `blackbox/chaos/scenarios.py`):
+
+| Fault | Status |
+|---|---|
+| `kill_process` | verified on QNX 8.0 (x86_64 QEMU) |
+| `cpu_hog`, `delay_thread`, `memory_pressure` | experimental: checked in dry runs only, and the CLI prints a warning when a scenario uses one |
 
 Measure how long a killed service was gone before something (for example the
 QNX High Availability Manager) restarted it. A restart is a thread name that

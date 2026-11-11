@@ -29,6 +29,20 @@ class ChaosCliTest(unittest.TestCase):
         self.assertIn("slay -s STOP controller", out)
         self.assertIn("nothing executed", out)
 
+    def test_warns_about_faults_not_verified_on_a_target(self):
+        code, out, err = run_cli(["chaos", "run", SCENARIO, "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertIn("experimental", err)
+        self.assertIn("delay_thread", err)
+        self.assertNotIn("kill_process", err)
+        self.assertNotIn("experimental", out)
+
+    def test_verified_only_scenario_has_no_warning(self):
+        kill = os.path.join(os.path.dirname(__file__), "..", "target", "ham_kill.json")
+        code, _, err = run_cli(["chaos", "run", kill, "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+
     def test_run_injects_between_start_and_stop(self):
         m = MockRunner(files={"/tmp/blackbox.kev": b"RAW"})
         with tempfile.TemporaryDirectory() as d:

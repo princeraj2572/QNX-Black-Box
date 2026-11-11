@@ -192,6 +192,9 @@ def cmd_chaos_run(args, runner_factory) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
     commands = scenario.commands()
+    if scenario.experimental():
+        print("warning: experimental fault(s), not yet verified on a QNX target: "
+              + ", ".join(scenario.experimental()), file=sys.stderr)
     if args.dry_run:
         print(f"# scenario {scenario.name}: {len(commands)} command(s), nothing executed")
         for cmd in commands:
