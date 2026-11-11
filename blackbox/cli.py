@@ -7,6 +7,7 @@ import sys
 from .analysis import analyze
 from .chaos.scenarios import ScenarioError, load_scenario
 from .config import ConfigError, load_config
+from .deadlines import infer_config, with_deadlines
 from .dashboard import render_html
 from .explain import explain
 from .parser import ParseError, parse_file
@@ -44,7 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     a.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
-    a.add_argument("--config", required=True, help="thread config JSON")
+    a.add_argument("--config", help="thread config JSON; without it, periodic threads "
+                   "are found from the trace's job markers")
+    a.add_argument("--deadline", action="append", default=[], metavar="THREAD=MS",
+                   help="deadline for a thread (repeatable); without --config it defaults to the period")
     a.add_argument("--json", metavar="OUT", help="also write the JSON report to OUT")
     r = sub.add_parser("record", help="record a trace on the target and copy it back")
     r.add_argument("--target", required=True, help="ssh host, e.g. root@192.168.1.50")
@@ -79,10 +83,35 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _deadlines(specs):
+    out = {}
+    for spec in specs:
+        name, _, ms = spec.partition("=")
+        try:
+            value = float(ms)
+        except ValueError:
+            value = 0
+        if not name or value <= 0:
+            raise ConfigError(f"--deadline {spec}: expected THREAD=MS with MS > 0")
+        out[name] = value
+    return out
+
+
 def cmd_analyze(args) -> int:
     try:
-        config = load_config(args.config)
+        deadlines = _deadlines(args.deadline)
         events = parse_file(args.trace)
+        if args.config:
+            config = with_deadlines(load_config(args.config), deadlines)
+        else:
+            config = infer_config(events, deadlines)
+            if not config:
+                raise ConfigError("no periodic threads found (no repeated RELEASED job "
+                                  "markers in the trace); pass --config")
+            for t in config.values():
+                print(f"Inferred from the trace: {t.name} every {t.period_ms:g} ms, "
+                      f"priority {t.priority}, deadline {t.deadline_ms:g} ms.")
+            print()
     except (OSError, ParseError, ConfigError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR

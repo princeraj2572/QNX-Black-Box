@@ -4,10 +4,12 @@ A job runs from a THREAD_STATE state=RELEASED event to the next
 THREAD_STATE state=DONE event of the same thread (docs/trace-format.md).
 """
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, replace
+from statistics import median
 from typing import Dict, List, Optional
 
-from .config import ThreadConfig
+from .config import ConfigError, ThreadConfig
 from .events import Event, ThreadState
 
 RELEASED = "RELEASED"
@@ -56,3 +58,37 @@ def find_jobs(events: List[Event], config: Dict[str, ThreadConfig]) -> List[Job]
 
 def find_misses(events: List[Event], config: Dict[str, ThreadConfig]) -> List[Job]:
     return [j for j in find_jobs(events, config) if j.missed]
+
+
+def infer_config(events: List[Event], deadlines: Optional[Dict[str, float]] = None
+                 ) -> Dict[str, ThreadConfig]:
+    """Build the thread config from the trace's job markers.
+
+    Every thread with at least two RELEASED markers is periodic: its period is
+    the median gap between releases of one tid, its priority the most common
+    one at release. The trace cannot show a deadline, so it defaults to the
+    period unless `deadlines` (ms by name) gives one.
+    """
+    releases: Dict[str, Dict[int, List[ThreadState]]] = {}
+    for e in events:
+        if isinstance(e, ThreadState) and e.state == RELEASED:
+            releases.setdefault(e.name, {}).setdefault(e.tid, []).append(e)
+    config = {}
+    for name, by_tid in releases.items():
+        gaps = [b.ts_ns - a.ts_ns for rel in by_tid.values() for a, b in zip(rel, rel[1:])]
+        if not gaps:
+            continue
+        period = round(median(gaps) / 1e6, 1)
+        prio = Counter(e.prio for rel in by_tid.values() for e in rel).most_common(1)[0][0]
+        config[name] = ThreadConfig(name, period, period, prio)
+    return with_deadlines(config, deadlines)
+
+
+def with_deadlines(config: Dict[str, ThreadConfig], deadlines: Optional[Dict[str, float]]
+                   ) -> Dict[str, ThreadConfig]:
+    """Override deadlines (ms by thread name); unknown names are an error."""
+    for name, ms in (deadlines or {}).items():
+        if name not in config:
+            raise ConfigError(f"--deadline {name}: no periodic thread of that name")
+        config = {**config, name: replace(config[name], deadline_ms=ms)}
+    return config

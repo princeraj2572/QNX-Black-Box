@@ -33,6 +33,13 @@ Explain the misses in a trace (internal text format, see `docs/trace-format.md`)
 
 Exit codes: `0` no misses, `1` at least one miss, `2` bad input or usage.
 
+No config file? If the traced program logs job markers (`docs/trace-format.md`),
+`analyze` finds each periodic thread's period and priority in the trace. Give
+the deadlines on the command line; without one, a thread's deadline is its
+period:
+
+    python3 -m blackbox analyze tests/fixtures/real/inversion_demo.trace --deadline controller=20
+
 Render the JSON report as one self-contained HTML timeline:
 
     python3 -m blackbox report-html report.json report.html

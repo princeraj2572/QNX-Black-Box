@@ -42,6 +42,18 @@ class CliTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("No deadline misses", r.stdout)
 
+    def test_analyze_without_config_infers_it(self):
+        r = run("analyze", os.path.join(FIXTURES, "real", "inversion_demo.trace"),
+                "--deadline", "controller=20")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("Inferred from the trace: controller every 50.1 ms, priority 20, deadline 20 ms.", r.stdout)
+        self.assertIn("Found 10 deadline misses.", r.stdout)
+        r = run("analyze", os.path.join(FIXTURES, "basic.trace"))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("pass --config", r.stderr)
+        r = run("analyze", os.path.join(FIXTURES, "real", "inversion_demo.trace"), "--deadline", "x")
+        self.assertEqual(r.returncode, 2)
+
     def test_errors_exit_2(self):
         with tempfile.TemporaryDirectory() as d:
             bad = os.path.join(d, "bad.trace")

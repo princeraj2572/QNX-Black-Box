@@ -79,8 +79,11 @@ and decodes it with the SDP's `traceprinter` into `trace.txt`.
 
 ## 4. Tell the tool what "on time" means (2 minutes)
 
-The config lists each periodic thread you care about. For this demo it is
-`tests/fixtures/real/inversion_demo.json`:
+The only thing the trace cannot tell the tool is the deadline. The quickest
+way is to give it on the command line, `--deadline controller=20`: the tool
+finds the controller's 50 ms period and priority 20 in the trace by itself.
+For a fixed setup, put everything in a config file instead, one entry per
+periodic thread. For this demo it is `tests/fixtures/real/inversion_demo.json`:
 
     {
       "threads": [

@@ -1,8 +1,8 @@
 import os
 import unittest
 
-from blackbox.config import ThreadConfig
-from blackbox.deadlines import find_jobs, find_misses
+from blackbox.config import ConfigError, ThreadConfig
+from blackbox.deadlines import find_jobs, find_misses, infer_config
 from blackbox.parser import parse_file, parse_text
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -63,6 +63,24 @@ class DeadlineTest(unittest.TestCase):
         jobs = find_jobs(events, CONFIG)
         self.assertEqual([(j.tid, j.response_ns) for j in jobs], [(4, 3_000_000), (5, 3_000_000)])
 
+
+
+class InferConfigTest(unittest.TestCase):
+    def test_matches_hand_written_config_on_real_trace(self):
+        events = parse_file(os.path.join(FIXTURES, "real", "inversion_demo.trace"))
+        c = infer_config(events, {"controller": 20})["controller"]
+        self.assertEqual((c.period_ms, c.deadline_ms, c.priority), (50.1, 20, 20))
+        self.assertEqual(len(find_misses(events, {"controller": c})), 10)
+
+    def test_deadline_defaults_to_period_and_needs_two_releases(self):
+        text = ("0 THREAD_STATE tid=1 name=a prio=7 state=RELEASED\n"
+                "10000000 THREAD_STATE tid=1 name=a prio=7 state=RELEASED\n"
+                "20000000 THREAD_STATE tid=2 name=once prio=3 state=RELEASED\n")
+        config = infer_config(parse_text(text))
+        self.assertEqual(list(config), ["a"])
+        self.assertEqual((config["a"].period_ms, config["a"].deadline_ms, config["a"].priority), (10, 10, 7))
+        with self.assertRaises(ConfigError):
+            infer_config(parse_text(text), {"once": 5})
 
 if __name__ == "__main__":
     unittest.main()
