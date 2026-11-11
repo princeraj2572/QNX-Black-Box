@@ -114,7 +114,10 @@ def summary(a: Analysis) -> List[str]:
     return out + [""]
 
 
-FIX = "Fix: set PTHREAD_PRIO_INHERIT on the mutex with pthread_mutexattr_setprotocol()."
+# The trace cannot name a mutex's holder (an uncontended lock never enters the kernel), so this
+# is offered as the likely fix, in the same conditional terms as the mutex-wait lines above it.
+FIX = ("Likely fix, if the lower-priority thread holds the mutex: set PTHREAD_PRIO_INHERIT on it "
+       "with pthread_mutexattr_setprotocol().")
 
 
 def mutex_inversion(a: Analysis) -> bool:

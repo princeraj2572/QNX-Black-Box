@@ -60,6 +60,12 @@ class RealDemoTest(unittest.TestCase):
         self.assertIn("med preempted low", head)
         self.assertEqual(text.count("PTHREAD_PRIO_INHERIT"), 1)
 
+    def test_fix_is_offered_as_likely_not_certain(self):
+        # The trace cannot name the mutex holder, so the fix must stay conditional.
+        text = explain(self.result, self.config)
+        self.assertIn("Likely fix, if the lower-priority thread holds the mutex", text)
+        self.assertNotIn("\n  - Fix:", text)
+
 
 if __name__ == "__main__":
     unittest.main()

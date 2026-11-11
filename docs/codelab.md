@@ -109,7 +109,7 @@ Output (first two of ten misses shown):
       - Cause in 10 of 10: slow reply from server.
       - Cause in 10 of 10: server blocked on a mutex while med preempted low.
       - Cause in 1 of 10: CPU starvation by pf_purge.
-      - Fix: set PTHREAD_PRIO_INHERIT on the mutex with pthread_mutexattr_setprotocol().
+      - Likely fix, if the lower-priority thread holds the mutex: set PTHREAD_PRIO_INHERIT on it with pthread_mutexattr_setprotocol().
 
     Details:
 
