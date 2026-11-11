@@ -10,10 +10,10 @@ QNX Global Hackathon 2026. Deadline: 15 December 2026, 2:00 PM Eastern
 | Build and run instructions naming QNX version, target and toolchain | Done | README "Install", "Usage", "QNX version, target and toolchain"; `target/README.md` |
 | Written description | Draft below; paste into Devpost | this file |
 | Public YouTube demo under 3 minutes | TODO(human): record and upload (PLAN.md F22) | |
-| Category: Developer Tooling and Host Tools | TODO(human): select on Devpost | |
+| Category: Developer Tooling and Host Tools | Done: selected in the Devpost draft | |
 | Codelab URL (tutorial prize) | Done; submit the GitHub URL of `docs/codelab.md` once public. TODO(human): replace its `[REAL OUTPUT ...]` placeholders (F22) | `docs/codelab.md` |
 | How the project uses QNX | Done | `docs/qnx-usage.md` |
-| AI-tool disclosure in the Official Rules | TODO(human): the rules page on qnx.devpost.com needs a login; read it and disclose if required | |
+| AI-tool disclosure | Done: the Official Rules have no AI clause, but the submission form requires "Which AI tools have you leveraged"; answered in the Devpost draft | Devpost Additional info |
 | Build instructions tested on a clean machine | TODO(human): suggested by the listing | |
 
 ## Submission draft
