@@ -70,6 +70,25 @@ class DashboardTest(unittest.TestCase):
                 render_html(bad)
 
 
+class RealDashboardTest(unittest.TestCase):
+    """The summary and miss list are static HTML, so they read without JS."""
+
+    def test_summary_list_and_fix(self):
+        real = os.path.join(FIXTURES, "real")
+        config = load_config(os.path.join(real, "inversion_demo.json"))
+        events = parse_file(os.path.join(real, "inversion_demo.trace"))
+        page = render_html(build_report(events, analyze(events, config), config))
+        static = page.split('<script id="data"')[0]
+        self.assertIn("controller missed its 20 ms deadline 10 times.", static)
+        self.assertIn('10/10</span> server waited on a mutex while med preempted low', static)
+        self.assertIn("PTHREAD_PRIO_INHERIT", static)
+        self.assertEqual(static.count('class="row"'), 10)
+        self.assertEqual(static.count('<article class="miss"'), 10)
+
+    def test_single_miss_headline(self):
+        self.assertIn("high missed its 5 ms deadline once.", render_html(make_report()))
+
+
 class ReportHtmlCliTest(unittest.TestCase):
     def run_cli(self, *argv):
         err = io.StringIO()
