@@ -55,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--decode", action="store_true", help=DECODE_HELP)
     v = sub.add_parser("recovery", help="measure how long restarted threads were gone")
     v.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
+    v.add_argument("--name", action="append", metavar="THREAD",
+                   help="only this thread name (repeatable); thread pools otherwise show up too")
     h = sub.add_parser("report-html", help="render a JSON report as a self-contained HTML page")
     h.add_argument("report", help="report JSON written by `analyze --json`")
     h.add_argument("out", help="HTML file to write")
@@ -102,7 +104,7 @@ def cmd_recovery(args) -> int:
     except (OSError, ParseError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
-    restarts = find_restarts(events)
+    restarts = find_restarts(events, args.name)
     for r in restarts:
         print(f"{r.name} gone at {r.down_ns / 1e6:.3f} ms, back at {r.up_ns / 1e6:.3f} ms: "
               f"recovered in {r.recovery_ns / 1e6:.3f} ms (tid {r.old_tid} -> {r.new_tid})")

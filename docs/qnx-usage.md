@@ -6,7 +6,9 @@ marked `TODO(human)`.
 
 Status: the tracelogger adapter and the priority inversion demo are verified
 on SDP 8.0 with an x86_64 QEMU target (captures in `tests/fixtures/real/`).
-The chaos commands and the HAM demo have not run on a target yet.
+The `record` command, the `kill_process` chaos fault and `recovery` are
+verified there too. The other chaos faults and the HAM demo have not run on a
+target yet.
 
 ## Feature map
 
@@ -48,12 +50,23 @@ ham and the High Availability Framework Developer's Guide at qnx.com.
   no `ham` either. TODO(human): install the HAM package from the QNX
   Software Center (it may need a separate license), then run the demo.
 
+## Measured recovery after a kill
+
+Checked on SDP 8.0, x86_64 QEMU, 2026-11-12. A shell loop restarted
+`inversion_demo` whenever it exited, and `blackbox chaos run` killed it with
+`slay -s KILL inversion_demo` while recording. `blackbox recovery --name
+controller --name server --name low --name med` found all four threads back
+in a new process 94 to 99 ms after their last event in the old one
+(`tests/fixtures/real/kill_demo.trace`). This measures a shell-loop restart,
+not HAM.
+
 ## To verify on a real target
 
 - TODO(human): the instrumented kernel image and boot steps needed for
   tracing on QEMU and on Raspberry Pi 5 (PLAN.md F18).
-- TODO(human): slay -s, on -p and the shell variable SECONDS behave as the
-  chaos commands assume.
+- `slay -s KILL` works as `kill_process` assumes (checked on QEMU, above).
+  TODO(human): on -p, the shell variable SECONDS and /dev/shmem, used by the
+  other faults.
 - Priority inheritance in message passing (checked on SDP 8.0, x86_64 QEMU,
   with `target/inversion_demo.c`): the server runs at the sender's priority
   (20) from the moment it receives. The demo still misses its deadline because

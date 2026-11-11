@@ -10,8 +10,9 @@ Scenario JSON:
 Every fault renders to commands that return quickly (long-running work is
 backgrounded) so the runner can start the next fault right away.
 
-TODO(human): verify each rendered command on a real QNX 8.0 target (slay -s,
-on -p, $SECONDS in the target shell, /dev/shmem).
+kill_process (slay -s KILL) is verified on QNX 8.0 QEMU. TODO(human): verify
+the others on a real target (slay -s STOP/CONT, on -p, $SECONDS in the target
+shell, /dev/shmem).
 """
 
 import json

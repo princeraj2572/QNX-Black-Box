@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 
-from blackbox.parser import parse_lines
+from blackbox.parser import parse_file, parse_lines
 from blackbox.recovery import find_restarts
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +29,18 @@ class RecoveryTest(unittest.TestCase):
         r = restarts[0]
         self.assertEqual((r.name, r.old_tid, r.new_tid), ("worker", 7001, 9001))
         self.assertEqual(r.recovery_ns, 5000000)
+
+    def test_name_filter(self):
+        events = parse_lines(TRACE.splitlines())
+        self.assertEqual(find_restarts(events, ["pool"]), [])
+        self.assertEqual(len(find_restarts(events, ["worker"])), 1)
+
+    def test_real_kill_on_qemu(self):
+        events = parse_file(os.path.join(ROOT, "tests", "fixtures", "real", "kill_demo.trace"))
+        restarts = find_restarts(events, ["controller", "server", "low", "med"])
+        self.assertEqual(sorted(r.name for r in restarts), ["controller", "low", "med", "server"])
+        for r in restarts:
+            self.assertTrue(90e6 < r.recovery_ns < 100e6, r)
 
     def test_cli(self):
         with tempfile.TemporaryDirectory() as d:

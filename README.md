@@ -72,7 +72,10 @@ Measure how long a killed service was gone before something (for example the
 QNX High Availability Manager) restarted it. A restart is a thread name that
 reappears under a new tid after its old one went quiet:
 
-    python3 -m blackbox recovery trace.txt
+    python3 -m blackbox recovery trace.txt --name controller --name server
+
+Without `--name`, thread pools and SSH sessions also show up, since their
+threads reuse names.
 
 See `target/README.md` for the HAM demo.
 
@@ -107,8 +110,10 @@ The report format is in `docs/report-format.md`. A guided walkthrough is in
 
 Status: verified on SDP 8.0 with an x86_64 QEMU target. The priority
 inversion demo in `target/` was built with `qcc`, traced with `tracelogger -w`,
-and its captures are analyzed in the tests (`tests/fixtures/real/`). Not yet
-verified: Raspberry Pi 5, the chaos fault commands, and the HAM recovery demo;
+and its captures are analyzed in the tests (`tests/fixtures/real/`). `record`, the
+`kill_process` fault and `recovery` were also run there: a killed service's
+threads came back in 94 to 99 ms. Not yet verified: Raspberry Pi 5, the other
+chaos faults, and the HAM demo;
 these are marked `TODO(human)` in the code and docs.
 
 ## License

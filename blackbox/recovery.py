@@ -5,12 +5,12 @@ uses pid * 1000 + tid) but keep their names. A restart is a tid whose events
 all come after the last event of an earlier tid with the same name; the gap
 between them is the recovery time.
 
-shortcut: threads that are deliberately created one after another under one
-name look like restarts; filter by name if that ever matters.
+Thread pools and per-session processes (sshd, sh) also reuse names, so on a
+real system pass `names` to keep only the services you care about.
 """
 
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 
 @dataclass(frozen=True)
@@ -26,9 +26,12 @@ class Restart:
         return self.up_ns - self.down_ns
 
 
-def find_restarts(events: Iterable) -> List[Restart]:
+def find_restarts(events: Iterable, names: Optional[Iterable[str]] = None) -> List[Restart]:
+    keep = set(names) if names else None
     spans = {}  # tid -> [name, first_ts, last_ts]
     for e in events:
+        if keep is not None and e.name not in keep:
+            continue
         s = spans.setdefault(e.tid, [e.name, e.ts_ns, e.ts_ns])
         s[1], s[2] = min(s[1], e.ts_ns), max(s[2], e.ts_ns)
     by_name = {}
