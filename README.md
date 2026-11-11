@@ -87,7 +87,7 @@ The report format is in `docs/report-format.md`. A guided walkthrough is in
 | services           |<------------| chaos  (scenarios -> shell commands)       |
 | tracelogger        |------------>| record (start/stop tracelogger, copy file) |
 +--------------------+  raw trace  +--------------------------------------------+
-                                          | adapter (TODO: real trace -> text)
+                                          | adapter (traceprinter text -> internal)
                                           v
               trace.txt --> parser --> events --> detectors --> explainer --> text
               config.json -----------------------^   |  deadlines, blocking,

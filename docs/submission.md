@@ -16,27 +16,124 @@ QNX Global Hackathon 2026. Deadline: 15 December 2026, 2:00 PM Eastern
 | AI-tool disclosure in the Official Rules | TODO(human): the rules page on qnx.devpost.com needs a login; read it and disclose if required | |
 | Build instructions tested on a clean machine | TODO(human): suggested by the listing | |
 
-## Written description (draft)
+## Submission draft
 
-**QNX Black Box** is a host tool that explains, in plain English, why a
-real-time deadline was missed on QNX 8.0.
+Paste each part into the matching Devpost field. Lines in `[brackets]` are
+for you to fill in or confirm.
 
-You record a system trace with the instrumented kernel and `tracelogger`, give
-the tool a small config listing each thread's period, deadline and priority,
-and it finds every job that missed its deadline and names the cause:
-priority inversion, CPU starvation by a higher-priority thread, or a slow
-reply to a QNX message. It follows send/receive/reply chains across threads,
-so a miss in a client is traced back to the server that held it up.
+### Project name
 
-It also injects faults on the target while recording (kill a process, CPU hog,
-pause a process, memory pressure), measures how long a service was down
-before the High Availability Manager restarted it, and renders a
-self-contained HTML report with a close-up of each miss.
+QNX Black Box
 
-Verified on QNX SDP 8.0 with an x86_64 QEMU target: a demo with a deliberate
-priority inversion misses its 20 ms deadline 10 times in 5 s, and the tool
-blames each miss on the server's mutex wait while a medium-priority thread
-ran. With `PTHREAD_PRIO_INHERIT` the misses go to zero.
+### Elevator pitch (200 characters max)
 
-Built with: Python 3 standard library only on the host; C and `qcc` for the
-target demos.
+A flight recorder for QNX 8.0: record a system trace, break the system on
+purpose, and get a plain-English answer to "why did this real-time deadline
+miss?"
+
+### About the project
+
+#### Inspiration
+
+When a real-time thread misses its deadline, the evidence is in a kernel
+trace with thousands of events, and finding the cause means reading it by
+hand: who preempted whom, who was blocked on which server, and for how long.
+We wanted a tool that reads the trace for you and names the cause, the way a
+flight recorder is read after an incident. [Add your own reason here if you
+have one.]
+
+#### What it does
+
+- **Records** a trace on a QNX 8.0 target over SSH (`tracelogger -w` with the
+  instrumented kernel) and decodes it on the host with the SDP's
+  `traceprinter`.
+- **Finds every missed deadline** from a small config listing each thread's
+  period, deadline and priority.
+- **Explains each miss in plain English**, with timestamps and thread names:
+  priority inversion, CPU starvation by a higher-priority thread, or a slow
+  reply to a QNX message. It follows send/receive/reply chains, so a miss in a
+  client is traced back to the server that held it up.
+- **Injects faults** while recording: kill a process, CPU hog, pause a
+  process, memory pressure in `/dev/shmem`.
+- **Measures recovery**: how long a killed service was gone before something
+  (such as the High Availability Manager) restarted it.
+- **Writes a report**: JSON, plus a self-contained HTML page with a close-up
+  of each miss, step-by-step events, per-thread jobs and CPU time. `serve`
+  shows it live in the browser.
+
+#### How we built it
+
+The host tool is Python 3 using only the standard library, so there is
+nothing to install. An adapter maps `traceprinter` output to a small internal
+text format (`docs/trace-format.md`). Detectors for deadlines, blocking
+chains, inversion, starvation and slow replies run over that format, and an
+explainer turns their findings into sentences. Target programs mark job
+boundaries with `trace_logf()` user events. The demo services in `target/`
+are C, built with `qcc` from SDP 8.0 and run on an x86_64 QEMU target. The
+tool has 126 unit tests, including tests on real captures from QEMU.
+
+#### Challenges we ran into
+
+- **QNX's own fixes kept removing the bug we were trying to demo.** Message
+  passing already applies priority inheritance: the server runs at the
+  sender's priority from the moment it receives. To get a real inversion, the
+  demo has the server wait on a mutex that has no priority inheritance.
+- **A multi-core target hid the inversion.** On SMP the medium-priority thread
+  simply ran on another core, so the demo pins its threads to one CPU.
+- **Some facts never reach the trace.** An uncontended mutex lock never
+  enters the kernel, so the trace cannot say who holds the mutex. The report
+  says so plainly rather than guessing.
+- **Fast-mode traces carry no priorities**, so recording uses wide mode
+  (`tracelogger -w`).
+
+#### Accomplishments that we're proud of
+
+On a real QNX 8.0 target, the inversion demo misses its 20 ms deadline 10
+times in 5 seconds. QNX Black Box blames each miss on the server's mutex
+wait while the medium-priority thread ran. Switch the mutex to
+`PTHREAD_PRIO_INHERIT` and the misses drop to zero, and the tool confirms it.
+
+#### What we learned
+
+[Your words. Suggestions: how QNX message passing and priority inheritance
+interact; what the instrumented kernel records and what it cannot see.]
+
+#### What's next
+
+- Run the High Availability Manager demo and publish measured recovery times
+  (the code is in `target/ham_demo.c`; HAM was not in our SDP install).
+- Raspberry Pi 5 support.
+- Generate the thread config from `pidin`, and correlate misses with `slog2`
+  logs.
+
+### Built with
+
+python, c, qnx, qnx-sdp-8.0, qcc, tracelogger, qemu, html, javascript
+
+### Try it out links
+
+- Code: https://github.com/princeraj2572/QNX-Black-Box
+- Codelab: https://github.com/princeraj2572/QNX-Black-Box/blob/master/docs/codelab.md
+- How it uses QNX: https://github.com/princeraj2572/QNX-Black-Box/blob/master/docs/qnx-usage.md
+
+### Video demo link
+
+[YouTube URL, under 3 minutes]
+
+### Category
+
+Developer Tooling & Host Tools
+
+### Testing instructions for judges
+
+No QNX target is needed to try the analyzer:
+
+    git clone https://github.com/princeraj2572/QNX-Black-Box.git
+    cd QNX-Black-Box
+    python3 -m unittest discover -s tests
+    python3 -m blackbox analyze tests/fixtures/real/inversion_demo.trace \
+        --config tests/fixtures/real/inversion_demo.json
+
+The second command explains the deadline misses in a real trace captured on
+QNX 8.0 (QEMU). For a live target, see "Record" in the README and
+`target/README.md`.

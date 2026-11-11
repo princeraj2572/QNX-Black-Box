@@ -43,8 +43,10 @@ ham and the High Availability Framework Developer's Guide at qnx.com.
 
 - TODO(human): build and run `target/ham_demo.c`, kill the worker with
   `target/ham_kill.json`, and record the measured recovery time here.
-- TODO(human): check whether `ham` is in the default QEMU image or has to be
-  copied to the target.
+- Checked on 2026-11-12: the local SDP 8.0 install has the HAM documentation
+  but no `ham` binary, no `ha/ham.h` and no `libham`, and the QEMU image has
+  no `ham` either. TODO(human): install the HAM package from the QNX
+  Software Center (it may need a separate license), then run the demo.
 
 ## To verify on a real target
 
