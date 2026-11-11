@@ -11,7 +11,7 @@ QNX Global Hackathon 2026. Deadline: 15 December 2026, 2:00 PM Eastern
 | Written description | Draft below; paste into Devpost | this file |
 | Public YouTube demo under 3 minutes | TODO(human): record and upload (PLAN.md F22) | |
 | Category: Developer Tooling and Host Tools | Done: selected in the Devpost draft | |
-| Codelab URL (tutorial prize) | Done; submit the GitHub URL of `docs/codelab.md` once public. TODO(human): replace its `[REAL OUTPUT ...]` placeholders (F22) | `docs/codelab.md` |
+| Codelab URL (tutorial prize) | Done: rewritten around `target/inversion_demo.c` with real QEMU output; URL entered in the Devpost draft | `docs/codelab.md` |
 | How the project uses QNX | Done | `docs/qnx-usage.md` |
 | AI-tool disclosure | Done: the Official Rules have no AI clause, but the submission form requires "Which AI tools have you leveraged"; answered in the Devpost draft | Devpost Additional info |
 | Build instructions tested on a clean machine | TODO(human): suggested by the listing | |
@@ -41,6 +41,14 @@ hand: who preempted whom, who was blocked on which server, and for how long.
 We wanted a tool that reads the trace for you and names the cause, the way a
 flight recorder is read after an incident. [Add your own reason here if you
 have one.]
+
+#### Who needs this
+
+Teams building automotive, medical and industrial systems on QNX lose days
+when a deadline slips: the answer is in a kernel trace, but reading it by
+hand takes an expert. QNX Black Box turns that into one command, and a
+second trace proves the fix, so a timing bug found in the lab is not
+rediscovered in the field.
 
 #### What it does
 
