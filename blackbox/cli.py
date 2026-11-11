@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 
 from .analysis import analyze
@@ -16,6 +17,7 @@ from .record import DEFAULT_REMOTE_PATH, decode, record
 from .report import build_report, report_json
 from .runner import RunnerError, SSHRunner
 from .serve import build_page, make_server
+from .suggest import DEFAULT_MODEL, SuggestError, build_prompt, suggest
 
 EXIT_OK = 0
 EXIT_MISSES = 1
@@ -68,6 +70,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("trace", help="internal-format trace, or traceprinter text of a tracelogger -w capture")
     s.add_argument("--config", required=True, help="thread config JSON")
     s.add_argument("--port", type=int, default=8000, help="port on 127.0.0.1 (default 8000)")
+    g = sub.add_parser(
+        "suggest", help="optional: ask an AI model for a code fix for the misses in a report",
+        description="Sends the report's findings (thread config, causes and timings, not the "
+                    "raw timeline) and, with --source, that file to the Gemini API, and prints "
+                    "the suggested fix. The key is read from GEMINI_API_KEY. The answer is a "
+                    "suggestion: confirm it with a second trace.")
+    g.add_argument("report", help="report JSON written by `analyze --json`")
+    g.add_argument("--source", metavar="FILE", help="source file to propose a patch for")
+    g.add_argument("--model", default=os.environ.get("BLACKBOX_AI_MODEL", DEFAULT_MODEL),
+                   help=f"model name (default {DEFAULT_MODEL}, or $BLACKBOX_AI_MODEL)")
+    g.add_argument("--print-prompt", action="store_true",
+                   help="print the prompt and exit; connects to nothing")
     c = sub.add_parser("chaos", help="inject faults on the target")
     csub = c.add_subparsers(dest="chaos_command", required=True)
     cr = csub.add_parser("run", help="run a fault scenario while recording a trace")
@@ -185,6 +199,27 @@ def cmd_report_html(args) -> int:
     return EXIT_OK
 
 
+def cmd_suggest(args, ask=suggest) -> int:
+    try:
+        with open(args.report, "r", encoding="utf-8") as f:
+            report = json.load(f)
+        source = None
+        if args.source:
+            with open(args.source, "r", encoding="utf-8", errors="replace") as f:
+                source = f.read()
+        prompt = build_prompt(report, source, os.path.basename(args.source or ""))
+        if args.print_prompt:
+            sys.stdout.write(prompt)
+            return EXIT_OK
+        answer = ask(prompt, os.environ.get("GEMINI_API_KEY", ""), args.model)
+    except (OSError, ValueError, AttributeError, SuggestError) as exc:  # ValueError: bad JSON
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"AI suggestion from {args.model} (not verified: apply it, record again, run analyze):\n")
+    print(answer)
+    return EXIT_OK
+
+
 def cmd_chaos_run(args, runner_factory) -> int:
     try:
         scenario = load_scenario(args.scenario)
@@ -230,4 +265,6 @@ def main(argv=None, runner_factory=SSHRunner) -> int:
         return cmd_recovery(args)
     if args.command == "serve":
         return cmd_serve(args)
+    if args.command == "suggest":
+        return cmd_suggest(args)
     return cmd_analyze(args)

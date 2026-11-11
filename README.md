@@ -90,6 +90,20 @@ threads reuse names.
 
 See `target/README.md` for the HAM demo.
 
+Optional AI step: ask a language model for a code fix. The analysis above is
+deterministic and needs no AI; this step takes its findings (thread config,
+causes and timings, never the raw timeline) and, with `--source`, that file,
+and asks Gemini for the smallest change that removes the cause:
+
+    export GEMINI_API_KEY=...        # free key from aistudio.google.com/apikey
+    python3 -m blackbox suggest report.json --source target/inversion_demo.c
+
+`--print-prompt` prints the prompt and connects to nothing, so you can paste it
+into any other assistant. The answer is a suggestion, not a finding: apply it,
+record a second trace and run `analyze` again. Zero misses is the proof. This
+step has unit tests against a fake API but has not been run against the live
+API yet (`TODO(human)`).
+
 The report format is in `docs/report-format.md`. A guided walkthrough is in
 `docs/codelab.md`.
 
@@ -108,6 +122,8 @@ The report format is in `docs/report-format.md`. A guided walkthrough is in
                                                      |  inversion, starvation,
                                                      v  slow replies
                                                   report.json --> report-html --> report.html
+                                                       |
+                                                       +--> suggest (optional, AI) --> proposed fix
 ```
 
 ## QNX version, target and toolchain
