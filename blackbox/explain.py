@@ -72,10 +72,58 @@ def explain_miss(job, a: Analysis, config: Dict[str, ThreadConfig]) -> List[str]
     return lines
 
 
+def causes_of(job, a: Analysis) -> List[str]:
+    """Short labels for each cause found for one missed job, in causal order."""
+    end = a.trace_end_ns if job.done_ns is None else job.done_ns
+    found = [f"priority inversion: {i.medium_name} ran while {i.block.on_name} held up "
+             f"{job.name}" for i in a.inversions if i.block.blocked_tid == job.tid
+             and job.release_ns <= i.block.start_ns <= end]
+    found += [f"slow reply from {d.block.on_name}" for d in a.reply_delays if d.job == job]
+    for w in a.mutex_waits:
+        if w.job == job:
+            if len({p for _, p, _ in w.ran}) > 1:
+                low = min(w.ran, key=lambda r: r[1])[0]
+                high = max(w.ran, key=lambda r: r[1])[0]
+                found.append(f"{w.name} waited on a mutex while {high} preempted {low} "
+                             f"(likely priority inversion)")
+            else:
+                found.append(f"{w.name} waited on a mutex")
+    found += [f"CPU starvation by {s.hog_name}" for s in a.starvation if s.job == job]
+    return list(dict.fromkeys(found))
+
+
+def summary(a: Analysis) -> List[str]:
+    out = ["Summary:"]
+    by_name: Dict[str, list] = {}
+    for job in a.misses:
+        by_name.setdefault(job.name, []).append(job)
+    for name, jobs in by_name.items():
+        late = [j.done_ns - j.deadline_ns for j in jobs if j.done_ns is not None]
+        line = f"  - {name}: {len(jobs)} miss{'es' if len(jobs) != 1 else ''}"
+        if late:
+            line += f", worst {ms(max(late))} late, average {ms(sum(late) // len(late))} late"
+        if len(late) < len(jobs):
+            line += f", {len(jobs) - len(late)} unfinished at the end of the trace"
+        out.append(line + ".")
+    counts: Dict[str, int] = {}
+    for job in a.misses:
+        for c in causes_of(job, a):
+            counts[c] = counts.get(c, 0) + 1
+    n = len(a.misses)
+    for c, k in sorted(counts.items(), key=lambda kv: -kv[1]):  # stable: keeps causal order
+        out.append(f"  - Cause in {k} of {n}: {c}.")
+    if any(len({p for _, p, _ in w.ran}) > 1 for w in a.mutex_waits):
+        out.append("  - Suggested fix: create the mutex with priority inheritance "
+                   "(pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT)).")
+    return out + [""]
+
+
 def explain(a: Analysis, config: Dict[str, ThreadConfig]) -> str:
     if not a.misses:
         return "No deadline misses found.\n"
     out = [f"Found {len(a.misses)} deadline miss{'es' if len(a.misses) != 1 else ''}.", ""]
+    if len(a.misses) > 1:  # one miss: the details below already are the summary
+        out += summary(a) + ["Details:", ""]
     for job in a.misses:
         out += explain_miss(job, a, config)
         out.append("")
